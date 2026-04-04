@@ -91,6 +91,7 @@ Bước 3: Lưu lại với ghi chú rõ ràng
 
 Bước 4: Đẩy nhánh lên GitHub
    git push origin feature/ten-tinh-nang
+   git push origin develop 
 
 ============================================================
 PHẦN 4: KHI MUỐN TRƯỞNG NHÓM KIỂM TRA (TẠO PULL REQUEST)
