@@ -1,0 +1,61 @@
+/* src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Poppins:wght@400;500;600;700&display=swap');
+
+
+html {
+  scroll-behavior: smooth;
+}
+  /* Hoặc tương tự, để không bị header che mất nội dung */
+
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #fefaf0; /* Màu nền trắng kem của các khối dưới */
+  overflow-x: hidden;
+}
+
+/* Font chữ có chân cho Tiêu đề (Giống ảnh) */
+.font-serif {
+  font-family: 'Playfair Display', serif;
+}
+
+/* Các màu chủ đạo của Theme */
+.bg-dark-custom { background-color: #111111 !important; }
+.text-yellow { color: #ffc107 !important; }
+.text-green { color: #28a745 !important; }
+
+/* Hiệu ứng hover cho link Header */
+.hover-yellow {
+  transition: color 0.3s ease;
+}
+.hover-yellow:hover {
+  color: #ffc107 !important;
+}
+
+/* Nút bấm Vàng bo tròn */
+.btn-yellow {
+  background-color: #ffc107;
+  color: #000;
+  border-radius: 50px;
+  font-weight: 600;
+  padding: 10px 24px;
+  border: none;
+  transition: all 0.3s ease;
+}
+.btn-yellow:hover {
+  background-color: #e0a800;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+/* Thẻ món ăn (Card) nẩy lên khi hover */
+.product-card {
+  border: none;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+.product-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+  border: 1px solid #ffc107;
+}

@@ -1,0 +1,99 @@
+const db = require('../config/db');
+
+const getDanhSachMonAn = async (req, res) => {
+    try {
+        // Query lấy món ăn và tên danh mục tương ứng
+        const sql = `
+            SELECT m.*, d.ten_danh_muc 
+            FROM MON_AN m 
+            LEFT JOIN DANH_MUC d ON m.ma_danh_muc = d.ma_danh_muc 
+            WHERE m.trang_thai = 'con_hang'
+        `;
+        const [rows] = await db.query(sql);
+
+        res.status(200).json({
+            success: true,
+            message: 'Lấy danh sách món ăn thành công',
+            data: rows
+        });
+    } catch (error) {
+        console.error('Lỗi lấy món ăn:', error);
+        res.status(500).json({ success: false, message: 'Lỗi server Backend' });
+    }
+};
+// LẤY DANH SÁCH MÓN ĂN THEO ID DANH MỤC
+const getMonAnTheoDanhMuc = async (req, res) => {
+    try {
+        // Lấy ID danh mục từ đường dẫn URL (vd: /danh-muc/1 thì id = 1)
+        const ma_danh_muc = req.params.id; 
+
+        const sql = `
+            SELECT m.*, d.ten_danh_muc 
+            FROM MON_AN m 
+            JOIN DANH_MUC d ON m.ma_danh_muc = d.ma_danh_muc 
+            WHERE m.trang_thai = 'con_hang' AND m.ma_danh_muc = ?
+        `;
+        // Truyền ma_danh_muc vào thay cho dấu ?
+        const [rows] = await db.query(sql, [ma_danh_muc]);
+
+        // Nếu danh mục đó chưa có món ăn nào
+        if (rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Không có món ăn nào hoặc danh mục không tồn tại!' 
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Lấy danh sách món ăn thuộc danh mục thành công`,
+            data: rows
+        });
+    } catch (error) {
+        console.error('Lỗi lấy món ăn theo danh mục:', error);
+        res.status(500).json({ success: false, message: 'Lỗi server Backend' });
+    }
+};
+const getTop4MonAnTuanQua = async (req, res) => {
+    try {
+        // Query lấy 4 món bán chạy nhất trong 7 ngày qua, chỉ tính các đơn đã hoàn thành
+        const query = `
+            SELECT 
+                m.ma_mon_an AS id, 
+                m.ten_mon AS name, 
+                m.hinh_anh AS image, 
+                m.gia_ban AS price,
+                5 AS rating,
+                SUM(c.so_luong) AS total_sold
+            FROM MON_AN m
+            JOIN CHI_TIET_DON_HANG c ON m.ma_mon_an = c.ma_mon_an
+            JOIN DON_HANG d ON c.ma_don_hang = d.ma_don_hang
+            WHERE d.ngay_dat >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) 
+              AND d.trang_thai = 'hoan_thanh'
+            GROUP BY m.ma_mon_an
+            ORDER BY total_sold DESC
+            LIMIT 4;
+        `;
+
+        // Thực thi truy vấn
+        const [rows] = await db.execute(query);
+
+        // Trả kết quả về cho Postman
+        res.status(200).json({
+            success: true,
+            message: "Lấy 4 món bán chạy nhất trong 1 tuần qua thành công",
+            data: rows
+        });
+    } catch (error) {
+        console.error("Lỗi getTop4MonAnTuanQua:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Lỗi server khi lấy dữ liệu món ăn bán chạy" 
+        });
+    }
+};
+module.exports = {
+    getDanhSachMonAn,
+    getMonAnTheoDanhMuc,
+    getTop4MonAnTuanQua
+};

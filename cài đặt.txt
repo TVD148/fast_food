@@ -1,0 +1,20 @@
+CREATE DATABASE IF NOT EXISTS fast_food DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+Bước 1: Chuyển Source Code
+
+Copy toàn bộ thư mục web_fast_food (trong đó có chứa cả thư mục con backend_fastfood và file DATABASE_DUMP_CHUYEN_MAY.sql) sang máy mới qua USB hoặc Google Drive.
+Bước 2: Cài đặt ở máy mới
+
+Máy mới bắt buộc phải được cài đặt Node.js (để chạy npm) và XAMPP (để chạy MySQL).
+Bật Apache và MySQL trên XAMPP.
+Bước 3: Nhập Cơ sở dữ liệu (Import Database)
+
+Mở trình duyệt vào http://localhost/phpmyadmin/
+Tạo một Database mới có tên là fast_food (Nhớ chọn Collation là utf8mb4_unicode_ci để không bị lỗi font tiếng Việt).
+Bấm vào database fast_food vừa tạo, chọn mục Import (Nhập).
+Tải lên file DATABASE_DUMP_CHUYEN_MAY.sql mà tôi đã tạo sẵn trong folder cho bạn.
+Bấm Import (Thực hiện/Go). Mọi thứ từ bảng Người Dùng, Món Ăn, Giỏ Hàng sẽ xuất hiện lại y xì đúc kèm theo dữ liệu mà bạn đang có.
+Bước 4: Cài đặt thư viện và Chạy lệnh Vì máy mới chưa có các thư viện Javascript, bạn làm như sau:
+
+Mở Terminal (Cmd/Powershell) ở thư mục web_fast_food. Chạy lệnh npm install. Đợi chạy xong, tiếp tục chạy npm run dev.
+Mở thêm 1 cửa sổ Terminal khác ở thư mục web_fast_food\backend_fastfood. Cũng chạy lệnh npm install, đợi xong rồi mới chạy npm run dev.
