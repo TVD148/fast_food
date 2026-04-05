@@ -38,8 +38,8 @@ git checkout main
 Bạn đang ở main và muốn merge code từ develop vào. Chạy:
 
 powershell
-# Kéo code mới nhất từ main
-git pull origin main
+# Kéo code mới nhất từ develop
+git pull origin develop
 # Merge develop vào main
 git merge develop
 # Đẩy lên GitHub
