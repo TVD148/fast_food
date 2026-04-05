@@ -34,6 +34,7 @@ git commit -m "Update README - thêm hướng dẫn cài đặt"
 # Đẩy lên nhánh develop
 git push origin develop
 giờ tôi đã chuuyeenr sang main down về mấy tôi trước mới merge
+git checkout main
 Bạn đang ở main và muốn merge code từ develop vào. Chạy:
 
 powershell
