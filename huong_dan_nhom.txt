@@ -1,0 +1,185 @@
+============================================================
+   HƯỚNG DẪN LÀM VIỆC NHÓM VỚI GIT - DỰ ÁN FAST FOOD
+============================================================
+
+============================================================
+PHẦN 1: LẦN ĐẦU TIÊN (CHỈ LÀM 1 LẦN DUY NHẤT)
+============================================================
+
+Bước 1: Cài Git nếu chưa có
+   → Tải tại: https://git-scm.com/download/win
+   → Cài xong mở Terminal kiểm tra: git --version
+
+Bước 2: Cài Node.js nếu chưa có
+   → Tải tại: https://nodejs.org (chọn bản LTS)
+   → Cài xong kiểm tra: node --version
+
+Bước 3: Clone (tải) dự án về máy
+   git clone https://github.com/TVD148/fast_food.git
+   cd fast_food
+
+Bước 4: Cài thư viện frontend
+   npm install
+
+Bước 5: Cài thư viện backend
+   cd backend_fastfood
+   npm install
+   cd ..
+
+Bước 6: Tạo file .env cho backend (chứa mật khẩu DB)
+   - Copy file .env.example thành .env
+   - Mở .env và điền thông tin database của máy bạn:
+     DB_HOST=127.0.0.1
+     DB_USER=root
+     DB_PASSWORD=    ← mật khẩu MySQL của bạn
+     DB_NAME=fast_food
+
+Bước 7: Import database
+   - Mở phpMyAdmin hoặc MySQL Workbench
+   - Tạo database tên: fast_food
+   - Import file: fast_food.sql có trong thư mục dự án
+
+============================================================
+PHẦN 2: MỖI NGÀY BẮT ĐẦU LÀM VIỆC
+============================================================
+
+Bước 1: Chuyển sang nhánh develop và kéo code mới nhất
+   git checkout develop
+   git pull origin develop
+
+Bước 2: Tạo nhánh riêng cho tính năng bạn sẽ làm
+   git checkout -b feature/ten-tinh-nang
+
+   Ví dụ:
+   git checkout -b feature/them-danh-muc
+   git checkout -b feature/fix-loi-dang-nhap
+   git checkout -b feature/cap-nhat-gio-hang
+
+Bước 3: Chạy dự án lên để code
+   - Mở Terminal 1 (chạy backend):
+     cd backend_fastfood
+     npm run dev
+
+   - Mở Terminal 2 (chạy frontend):
+     cd ..        ← quay về thư mục gốc
+     npm run dev
+
+   - Mở trình duyệt vào: http://localhost:5173
+
+============================================================
+PHẦN 3: SAU KHI CODE XONG MỘT PHẦN
+============================================================
+
+Bước 1: Xem những file nào đã thay đổi
+   git status
+
+Bước 2: Thêm tất cả file thay đổi
+   git add .
+
+Bước 3: Lưu lại với ghi chú rõ ràng
+   git commit -m "Mô tả ngắn gọn bạn đã làm gì"
+
+   Ví dụ commit message tốt:
+   ✅ "Thêm tính năng lọc món theo danh mục"
+   ✅ "Fix lỗi không hiển thị giỏ hàng khi chưa đăng nhập"
+   ✅ "Cập nhật giao diện trang thanh toán"
+
+   Tránh viết:
+   ❌ "update"
+   ❌ "fix"
+   ❌ "abc"
+
+Bước 4: Đẩy nhánh lên GitHub
+   git push origin feature/ten-tinh-nang
+
+============================================================
+PHẦN 4: KHI MUỐN TRƯỞNG NHÓM KIỂM TRA (TẠO PULL REQUEST)
+============================================================
+
+Bước 1: Vào GitHub → https://github.com/TVD148/fast_food
+
+Bước 2: GitHub sẽ tự hiện thông báo "Compare & pull request"
+        → Nhấn vào đó
+
+Bước 3: Điền thông tin:
+   - Title: Tên tính năng bạn đã làm
+   - Description: Mô tả chi tiết bạn đã làm gì, test thế nào
+
+Bước 4: Chọn:
+   - base: develop   ← merge VÀO nhánh này
+   - compare: feature/ten-tinh-nang   ← merge TỪ nhánh này
+
+Bước 5: Nhấn "Create pull request"
+
+Bước 6: Chờ trưởng nhóm review và merge
+
+============================================================
+PHẦN 5: KHI TRƯỞNG NHÓM YÊU CẦU SỬA
+============================================================
+
+   - Sửa code trên máy
+   - git add .
+   - git commit -m "Fix theo yêu cầu: ..."
+   - git push origin feature/ten-tinh-nang
+   → Pull Request tự động cập nhật, không cần tạo lại
+
+============================================================
+PHẦN 6: SAU KHI PULL REQUEST ĐƯỢC MERGE
+============================================================
+
+Bước 1: Quay về develop và kéo code mới nhất
+   git checkout develop
+   git pull origin develop
+
+Bước 2: Xóa nhánh cũ đi (không cần nữa)
+   git branch -d feature/ten-tinh-nang
+
+Bước 3: Bắt đầu tính năng mới → quay lại Phần 2
+
+============================================================
+PHẦN 7: KHI GẶP XUNG ĐỘT (CONFLICT)
+============================================================
+
+Xung đột xảy ra khi 2 người cùng sửa 1 file.
+Git sẽ đánh dấu chỗ bị xung đột như sau:
+
+   <<<<<<< HEAD
+   Code của bạn
+   =======
+   Code của người kia
+   >>>>>>> branch-name
+
+Cách xử lý:
+1. Mở file bị xung đột
+2. Xóa các dấu <<<<<<, =======, >>>>>>>
+3. Giữ lại phần code đúng (có thể giữ cả 2 nếu cần)
+4. git add .
+5. git commit -m "Resolve conflict"
+
+============================================================
+PHẦN 8: CÁC LỆNH GIT HAY DÙNG
+============================================================
+
+git status              → Xem file nào đã thay đổi
+git log --oneline       → Xem lịch sử commit
+git branch              → Xem đang ở nhánh nào
+git checkout ten-nhanh  → Chuyển sang nhánh khác
+git pull origin develop → Kéo code mới từ develop
+git stash               → Tạm cất code đang làm dở
+git stash pop           → Lấy code đã cất ra làm tiếp
+
+============================================================
+CẤU TRÚC NHÁNH DỰ ÁN
+============================================================
+
+main (nhánh chính - code ổn định, đã test, chỉ TN quản lý)
+  │
+  └── develop (nhánh phát triển - merge tính năng vào đây)
+        │
+        ├── feature/tinh-nang-1  (thành viên A làm)
+        ├── feature/tinh-nang-2  (thành viên B làm)
+        └── feature/tinh-nang-3  (thành viên C làm)
+
+============================================================
+REPO: https://github.com/TVD148/fast_food
+============================================================
