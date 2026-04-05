@@ -17,3 +17,49 @@ powershell
 git checkout main
 git merge develop
 git push origin main
+
+
+tôi muốn update file readme thôi đưa lên develop trước 
+Chạy theo thứ tự này:
+
+powershell
+# Chuyển sang nhánh develop
+git checkout develop
+# Kéo code mới nhất từ develop trên GitHub về (nếu có)
+git pull origin developgio
+# Thêm file README đã sửa
+git add README.md
+# Commit
+git commit -m "Update README - thêm hướng dẫn cài đặt"
+# Đẩy lên nhánh develop
+git push origin develop
+giờ tôi đã chuuyeenr sang main down về mấy tôi trước mới merge
+Bạn đang ở main và muốn merge code từ develop vào. Chạy:
+
+powershell
+# Kéo code mới nhất từ develop
+git pull origin develop
+# Merge develop vào main
+git merge develop
+# Đẩy lên GitHub
+git push origin main
+Sau khi merge xong, main sẽ có đầy đủ code từ develop (kể cả README đã update).
+
+1
+README.md
+bạn thấy file git tinh nang khong tôi mới tạo nhưng mỗi lần lại phải đẩy từng file một tôi muốn đẩy tất cả những file đã thay đổi hoặc thêm vào thì sap
+git add . (có dấu chấm) đã thêm tất cả file thay đổi rồi — không cần chỉ từng file!
+
+powershell
+git add .              # Dấu chấm = tất cả file thay đổi
+git commit -m "..."
+git push origin develop
+Phân biệt:
+
+Lệnh	Tác dụng
+git add README.md	Chỉ thêm 1 file cụ thể
+git add .	Thêm tất cả file đã sửa/thêm mới
+git add src/	Thêm cả 1 thư mục
+TIP
+
+Muốn xem trước có những file nào sẽ được thêm, chạy git status — file màu đỏ là chưa add, màu xanh là đã add sẵn sàng commit.
