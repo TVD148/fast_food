@@ -1,0 +1,19 @@
+Khi muốn làm tính năng mới:
+
+powershell
+# Tạo nhánh tính năng từ develop
+git checkout develop
+git checkout -b feature/them-tinh-nang-moi
+# ... làm code ...
+# Nếu OK → merge vào develop
+git checkout develop
+git merge feature/them-tinh-nang-moi
+# Nếu lỗi → bỏ nhánh đó đi, develop vẫn nguyên vẹn
+git checkout develop
+git branch -D feature/them-tinh-nang-moi
+Khi develop ổn định → merge vào main để ra bản chính thức:
+
+powershell
+git checkout main
+git merge develop
+git push origin main
