@@ -91,6 +91,7 @@ Bước 3: Lưu lại với ghi chú rõ ràng
 
 Bước 4: Đẩy nhánh lên GitHub
    git push origin feature/ten-tinh-nang
+   git push origin develop 
 
 ============================================================
 PHẦN 4: KHI MUỐN TRƯỞNG NHÓM KIỂM TRA (TẠO PULL REQUEST)
@@ -183,3 +184,18 @@ main (nhánh chính - code ổn định, đã test, chỉ TN quản lý)
 ============================================================
 REPO: https://github.com/TVD148/fast_food
 ============================================================
+
+thiết lập thông tin git
+git config --global user.email "emailcuaban@gmail.com"
+git config --global user.name "Tên Của Bạn"
+Ví dụ:
+
+powershell
+git config --global user.email "hoang123@gmail.com"
+git config --global user.name "Hoang"
+Sau đó commit lại bình thường:
+
+powershell
+git add .
+git commit -m "Sửa HeroSection"
+git push origin develop
