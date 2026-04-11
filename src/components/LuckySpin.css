@@ -1,0 +1,62 @@
+/* LuckySpin.css */
+
+.lucky-spin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+}
+
+.lucky-spin-modal {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 320px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+.wheel-container {
+  width: 200px;
+  height: 200px;
+  margin: 0 auto;
+  cursor: pointer;
+  position: relative;
+}
+
+.wheel {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: conic-gradient(
+    #ff6b6b 0deg 90deg,
+    #ffd93d 90deg 180deg,
+    #6bcB77 180deg 270deg,
+    #4d9de0 270deg 360deg
+  );
+  border: 8px solid #fff;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+  transition: transform 3s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.wheel.spinning {
+  transform: rotate(calc(360deg * 4 + var(--spin-angle, 0deg)));
+}
+
+/* Optional pointer */
+.wheel-container::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 20px solid #ff6b6b;
+}

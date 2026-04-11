@@ -15,6 +15,18 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [avatar, setAvatar] = useState(null);
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatar(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   
   const [orders, setOrders] = useState([]);
 
@@ -151,8 +163,12 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
         <div className="col-lg-3">
           <div className="bg-white rounded shadow-sm border p-3">
             <div className="text-center mb-4 mt-2 border-bottom pb-4">
-              <div className="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-2" style={{width: '90px', height: '90px'}}>
-                <i className="bi bi-person-fill text-muted" style={{fontSize: '3.5rem'}}></i>
+              <div className="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-2 overflow-hidden" style={{width: '90px', height: '90px'}}>
+                {avatar ? (
+                  <img src={avatar} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                ) : (
+                  <i className="bi bi-person-fill text-muted" style={{fontSize: '3.5rem'}}></i>
+                )}
               </div>
               <h5 className="fw-bold mb-1">{currentUser?.name || currentUser?.ho_ten || 'Khách hàng'}</h5>
               <small className="text-muted">{currentUser?.email || currentUser?.so_dien_thoai || 'Chưa cập nhật'}</small>
@@ -267,10 +283,18 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                   <div className="col-md-4 d-none d-md-block border-start ps-4">
                     <p className="fw-semibold small text-muted mb-2">Avatar</p>
                     <div className="bg-light border text-center p-3 rounded mb-2">
-                        <div className="bg-secondary rounded-circle d-inline-flex justify-content-center align-items-center mb-3 text-white" style={{width: '100px', height: '100px'}}>
-                          <i className="bi bi-person-fill" style={{fontSize: '4rem'}}></i>
+                        <div className="bg-secondary rounded-circle d-inline-flex justify-content-center align-items-center mb-3 text-white overflow-hidden" style={{width: '100px', height: '100px'}}>
+                          {avatar ? (
+                            <img src={avatar} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                          ) : (
+                            <i className="bi bi-person-fill" style={{fontSize: '4rem'}}></i>
+                          )}
                         </div>
-                        <p className="small text-muted fst-italic mb-0">Chưa cập nhật</p>
+                        <p className="small text-muted fst-italic mb-2">{avatar ? 'Đã cập nhật' : 'Chưa cập nhật'}</p>
+                        <label className="btn btn-sm btn-outline-secondary">
+                          <i className="bi bi-camera me-1"></i> Đổi ảnh
+                          <input type="file" accept="image/*" className="d-none" onChange={handleAvatarChange} />
+                        </label>
                     </div>
                   </div>
                 </div>

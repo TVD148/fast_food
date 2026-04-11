@@ -4,6 +4,7 @@ import 'aos/dist/aos.css';
 
 import Header from './components/Header';
 import HeroSection from './components/HeroSection';
+import DealOfDay from './components/DealOfDay';
 import FeaturedSection from './components/FeaturedSection';
 import BestSellingSection from './components/BestSellingSection';
 import FeaturesSection from './components/FeaturesSection';
@@ -15,8 +16,10 @@ import AuthModal from './components/AuthModal';
 import CartOffcanvas from './components/CartOffcanvas';
 import CheckoutModal from './components/CheckoutModal';
 import CustomerProfilePage from './components/CustomerProfilePage';
+import ExitIntentPopup from './components/ExitIntentPopup';
 
 function App() {
+  // State for UI
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [pageState, setPageState] = useState({ page: 'home', profileTab: 'info' });
@@ -41,6 +44,8 @@ function App() {
         <>
           <div id="trang-chu">
             <HeroSection />
+            <DealOfDay />
+            {/* Deal of the Day appears right after Hero Section */}
           </div>
           
           <div id="ve-chung-toi">
@@ -80,6 +85,9 @@ function App() {
 
       {/* Tính năng thanh toán */}
       <CheckoutModal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} />
+
+      {/* Pop-up Khuyến mãi khi định thoát */}
+      <ExitIntentPopup />
     </div>
   );
 }

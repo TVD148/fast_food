@@ -48,7 +48,9 @@ const HeroSection = () => {
             {/* Slider Text */}
             <div className="d-flex align-items-center gap-3">
               <span className="fw-bold">{`0${currentIndex + 1}`}</span>
-              <div style={{width: '40px', height: '2px', backgroundColor: '#ffc107'}}></div>
+              <div style={{ width: '80px', height: '2px', backgroundColor: 'rgba(255,255,255,0.2)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ width: `${((currentIndex + 1) / slides.length) * 100}%`, height: '100%', backgroundColor: '#ffc107', transition: 'width 0.4s ease-in-out', position: 'absolute', top: 0, left: 0 }}></div>
+              </div>
               <span className="text-secondary fw-bold">{`0${slides.length}`}</span>
               <button className="btn btn-outline-secondary rounded-circle p-2 ms-2" onClick={handlePrev}><i className="bi bi-arrow-left"></i></button>
               <button className="btn btn-warning rounded-circle p-2" onClick={handleNext}><i className="bi bi-arrow-right"></i></button>
