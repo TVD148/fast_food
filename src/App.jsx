@@ -4,7 +4,6 @@ import 'aos/dist/aos.css';
 
 import Header from './components/Header';
 import HeroSection from './components/HeroSection';
-import DealOfDay from './components/DealOfDay';
 import FeaturedSection from './components/FeaturedSection';
 import BestSellingSection from './components/BestSellingSection';
 import FeaturesSection from './components/FeaturesSection';
@@ -44,8 +43,6 @@ function App() {
         <>
           <div id="trang-chu">
             <HeroSection />
-            <DealOfDay />
-            {/* Deal of the Day appears right after Hero Section */}
           </div>
           
           <div id="ve-chung-toi">
