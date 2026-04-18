@@ -3,6 +3,7 @@ import { useCart } from '../contexts/CartContext';
 import { API_BASE_URL } from '../apiConfig';
 import qrBankImg from '../assets/qr_bank.png';
 import { useAuth } from '../contexts/AuthContext';
+import MapPickerModal from './MapPickerModal';
 
 const CheckoutModal = ({ isOpen, onClose }) => {
   const { cartItems, getCartTotal, closeCart, clearCart } = useCart();
@@ -30,6 +31,7 @@ const CheckoutModal = ({ isOpen, onClose }) => {
   
   // step: 'form' | 'qr' | 'success'
   const [step, setStep] = useState('form');
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -258,7 +260,17 @@ const CheckoutModal = ({ isOpen, onClose }) => {
                         />
                       </div>
                       <div className="mb-3">
-                        <label className="form-label small text-secondary">Địa chỉ nhận hàng (*)</label>
+                        <div className="d-flex justify-content-between align-items-end mb-1">
+                          <label className="form-label small text-secondary mb-0">Địa chỉ nhận hàng (*)</label>
+                          <button 
+                            type="button" 
+                            className="btn btn-sm text-danger d-flex align-items-center gap-1 p-0 fw-semibold"
+                            onClick={() => setIsMapOpen(true)}
+                            title="Chọn vị trí trên bản đồ"
+                          >
+                            <i className="bi bi-geo-alt-fill"></i> Chọn trên bản đồ
+                          </button>
+                        </div>
                         <textarea 
                           className="form-control" rows="2" name="address"
                           value={formData.address} onChange={handleChange}
@@ -356,8 +368,16 @@ const CheckoutModal = ({ isOpen, onClose }) => {
           </div>
         </div>
       </div>
+
+      <MapPickerModal 
+        isOpen={isMapOpen} 
+        onClose={() => setIsMapOpen(false)} 
+        onConfirm={(address) => setFormData(prev => ({ ...prev, address }))} 
+        initialAddress={formData.address}
+      />
     </>
   );
 };
 
 export default CheckoutModal;
+
