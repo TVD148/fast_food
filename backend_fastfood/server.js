@@ -17,6 +17,7 @@ const gioHangRoutes = require('./routes/gioHangRoutes');
 const donHangRoutes = require('./routes/donHangRoutes');
 const danhGiaRoutes = require('./routes/danhGiaRoutes');
 const danhMucRoutes = require('./routes/danhMucRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Khai báo đường dẫn API gốc
 app.use('/api/mon-an', monAnRoutes);
@@ -25,6 +26,7 @@ app.use('/api/gio-hang', gioHangRoutes);
 app.use('/api/don-hang', donHangRoutes);
 app.use('/api/danh-gia', danhGiaRoutes);
 app.use('/api/danh-muc', danhMucRoutes);
+app.use('/api/admin', adminRoutes);
 
 // --- PHẦN PHỤC VỤ FRONTEND ---
 // Serve folder 'public' (Sau khi bạn copy nội dung folder dist của frontend vào đây)

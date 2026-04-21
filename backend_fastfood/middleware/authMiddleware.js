@@ -39,4 +39,12 @@ const optionalAuth = (req, res, next) => {
     next();
 };
 
-module.exports = { xacThucToken, optionalAuth };
+// Middleware kiểm tra quyền quản trị
+const kiemTraAdmin = (req, res, next) => {
+    if (!req.user || req.user.vai_tro !== 'quan_tri') {
+        return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập trang quản trị!' });
+    }
+    next();
+};
+
+module.exports = { xacThucToken, optionalAuth, kiemTraAdmin };

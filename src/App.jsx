@@ -16,14 +16,22 @@ import CartOffcanvas from './components/CartOffcanvas';
 import CheckoutModal from './components/CheckoutModal';
 import CustomerProfilePage from './components/CustomerProfilePage';
 import ExitIntentPopup from './components/ExitIntentPopup';
+import AdminPage from './components/admin/AdminPage';
+import { useAuth } from './contexts/AuthContext';
 
 function App() {
   // State for UI
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [pageState, setPageState] = useState({ page: 'home', profileTab: 'info' });
+  const [forceCustomer, setForceCustomer] = useState(false);
+  const { currentUser } = useAuth();
 
   const navigateTo = (page, profileTab = 'info') => {
+    if (page === 'admin') {
+      setForceCustomer(false); // quay lại trang admin
+      return;
+    }
     setPageState({ page, profileTab });
     window.scrollTo(0, 0); // Scroll to top on page change
   };
@@ -31,6 +39,11 @@ function App() {
   useEffect(() => {
     AOS.init({ duration: 800, once: true, offset: 50 });
   }, []);
+
+  // Nếu là quản trị viên → hiển thị trang Admin
+  if (currentUser?.vai_tro === 'quan_tri' && !forceCustomer) {
+    return <AdminPage onExitAdmin={() => setForceCustomer(true)} />;
+  }
 
   return (
     <div className="font-sans" style={{ backgroundColor: '#fefaf0' }}>
@@ -89,4 +102,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;
