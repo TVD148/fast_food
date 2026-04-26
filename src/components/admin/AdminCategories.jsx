@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { API_BASE_URL } from '../../apiConfig';
+import ConfirmDialog from './ConfirmDialog';
 
 const formatMoney = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
 
@@ -13,6 +14,7 @@ export default function AdminCategories() {
     const [form, setForm] = useState(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState(null);
+    const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null, name: '' });
 
     const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
 
@@ -43,8 +45,13 @@ export default function AdminCategories() {
         setSaving(false);
     };
 
-    const handleDelete = async (id, name) => {
-        if (!window.confirm(`Xóa danh mục "${name}"? Các món ăn trong danh mục này sẽ bị mất liên kết.`)) return;
+    const handleDelete = (id, name) => {
+        setConfirmDialog({ open: true, id, name });
+    };
+
+    const handleConfirmDelete = async () => {
+        const { id } = confirmDialog;
+        setConfirmDialog({ open: false, id: null, name: '' });
         const token = localStorage.getItem('token');
         const res = await fetch(`${API_BASE_URL}/admin/danh-muc/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
@@ -55,6 +62,14 @@ export default function AdminCategories() {
     return (
         <div className="admin-section">
             {toast && <div className={`admin-toast ${toast.type}`}>{toast.msg}</div>}
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title="Xóa danh mục"
+                message={<>Bạn có chắc muốn xóa danh mục <strong>"{confirmDialog.name}"</strong>?<br/><span style={{color:'#ef4444'}}>Các món ăn trong danh mục sẽ bị mất liên kết.</span></>}
+                confirmText="Xóa danh mục"
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setConfirmDialog({ open: false, id: null, name: '' })}
+            />
             <div className="admin-section-header">
                 <h2 className="admin-section-title">📂 Quản lý Danh mục</h2>
                 <button className="btn-admin-primary" onClick={openAdd}>+ Thêm danh mục</button>

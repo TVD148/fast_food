@@ -8,6 +8,7 @@ const protect = [xacThucToken, kiemTraAdmin];
 
 // Dashboard
 router.get('/dashboard', protect, adminController.getDashboardStats);
+router.get('/dashboard/doanh-thu', protect, adminController.getDoanhThuChart);
 
 // Đơn hàng
 router.get('/don-hang', protect, adminController.getAllDonHang);
@@ -28,6 +29,7 @@ router.delete('/danh-muc/:id', protect, adminController.xoaDanhMuc);
 // Người dùng
 router.get('/nguoi-dung', protect, adminController.getAllNguoiDung);
 router.put('/nguoi-dung/:id/vai-tro', protect, adminController.capNhatVaiTro);
+router.put('/nguoi-dung/:id/trang-thai', protect, adminController.khoaTaiKhoan);
 router.delete('/nguoi-dung/:id', protect, adminController.xoaNguoiDung);
 
 module.exports = router;

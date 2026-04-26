@@ -11,6 +11,9 @@ export const CartProvider = ({ children }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const { isLoggedIn } = useAuth();
 
+  // Kiểm tra có token JWT không (user đăng nhập email/password mới có)
+  const hasToken = () => !!localStorage.getItem('token');
+
   // Load cart from backend when logged in
   useEffect(() => {
     const fetchCart = async () => {
@@ -18,8 +21,11 @@ export const CartProvider = ({ children }) => {
         setCartItems([]);
         return;
       }
+      // Nếu là user Google/Apple (Firebase) thì không có JWT token -> dùng local
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
       try {
-        const token = localStorage.getItem('token');
         const res = await fetch(`${API_BASE_URL}/gio-hang`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -43,8 +49,8 @@ export const CartProvider = ({ children }) => {
   }, [isLoggedIn]);
 
   const addToCart = async (product) => {
-    if (!isLoggedIn) {
-      // Guest mode: update local state only
+    // Nếu chưa đăng nhập hoặc là user Firebase (không có JWT) -> dùng local state
+    if (!isLoggedIn || !hasToken()) {
       setCartItems(prevItems => {
         const existingItem = prevItems.find(item => item.id === product.id);
         if (existingItem) {
@@ -87,7 +93,7 @@ export const CartProvider = ({ children }) => {
   };
 
   const removeFromCart = async (productId) => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn || !hasToken()) {
       setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
       return;
     }
@@ -117,7 +123,7 @@ export const CartProvider = ({ children }) => {
       return;
     }
 
-    if (!isLoggedIn) {
+    if (!isLoggedIn || !hasToken()) {
       setCartItems(prevItems => 
         prevItems.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item)
       );

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { API_BASE_URL } from '../../apiConfig';
+import ConfirmDialog from './ConfirmDialog';
 
 const formatMoney = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
 
@@ -16,6 +17,7 @@ export default function AdminMenu() {
     const [search, setSearch] = useState('');
     const [filterCat, setFilterCat] = useState('');
     const [toast, setToast] = useState(null);
+    const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null, name: '' });
 
     const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
 
@@ -55,8 +57,13 @@ export default function AdminMenu() {
         setSaving(false);
     };
 
-    const handleDelete = async (id, name) => {
-        if (!window.confirm(`Xóa món "${name}"?`)) return;
+    const handleDelete = (id, name) => {
+        setConfirmDialog({ open: true, id, name });
+    };
+
+    const handleConfirmDelete = async () => {
+        const { id } = confirmDialog;
+        setConfirmDialog({ open: false, id: null, name: '' });
         const token = localStorage.getItem('token');
         const res = await fetch(`${API_BASE_URL}/admin/mon-an/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
@@ -72,6 +79,14 @@ export default function AdminMenu() {
     return (
         <div className="admin-section">
             {toast && <div className={`admin-toast ${toast.type}`}>{toast.msg}</div>}
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title="Xóa món ăn"
+                message={<>Bạn có chắc muốn xóa món <strong>"{confirmDialog.name}"</strong>?<br/><span style={{color:'#ef4444'}}>Hành động này không thể hoàn tác.</span></>}
+                confirmText="Xóa món"
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setConfirmDialog({ open: false, id: null, name: '' })}
+            />
             <div className="admin-section-header">
                 <h2 className="admin-section-title">🍔 Quản lý Thực đơn</h2>
                 <button className="btn-admin-primary" onClick={openAdd}>+ Thêm món</button>

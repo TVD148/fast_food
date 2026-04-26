@@ -37,6 +37,56 @@ const getDashboardStats = async (req, res) => {
     }
 };
 
+// ========== DOANH THU THEO KỲ (cho biểu đồ đường) ==========
+const getDoanhThuChart = async (req, res) => {
+    try {
+        const { kieu = '7ngay' } = req.query;
+        let query = '';
+
+        if (kieu === '7ngay') {
+            query = `
+                SELECT
+                    DATE(ngay_dat) AS ngay,
+                    COALESCE(SUM(tong_tien),0) AS doanh_thu,
+                    COUNT(*) AS so_don
+                FROM DON_HANG
+                WHERE ngay_dat >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+                GROUP BY DATE(ngay_dat) ORDER BY ngay ASC
+            `;
+        } else if (kieu === '4tuan') {
+            query = `
+                SELECT
+                    DATE(ngay_dat - INTERVAL WEEKDAY(ngay_dat) DAY) AS ngay,
+                    COALESCE(SUM(tong_tien),0) AS doanh_thu,
+                    COUNT(*) AS so_don
+                FROM DON_HANG
+                WHERE ngay_dat >= DATE_SUB(CURDATE(), INTERVAL 27 DAY)
+                GROUP BY DATE(ngay_dat - INTERVAL WEEKDAY(ngay_dat) DAY)
+                ORDER BY ngay ASC
+            `;
+        } else if (kieu === '12thang') {
+            query = `
+                SELECT
+                    DATE_FORMAT(ngay_dat, '%Y-%m-01') AS ngay,
+                    COALESCE(SUM(tong_tien),0) AS doanh_thu,
+                    COUNT(*) AS so_don
+                FROM DON_HANG
+                WHERE ngay_dat >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
+                GROUP BY DATE_FORMAT(ngay_dat, '%Y-%m-01')
+                ORDER BY ngay ASC
+            `;
+        } else {
+            return res.status(400).json({ success: false, message: 'Kiểu không hợp lệ' });
+        }
+
+        const [data] = await db.query(query);
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+};
+
 // ========== QUẢN LÝ ĐƠN HÀNG ==========
 const getAllDonHang = async (req, res) => {
     try {
@@ -196,9 +246,29 @@ const xoaDanhMuc = async (req, res) => {
 // ========== QUẢN LÝ NGƯỜI DÙNG ==========
 const getAllNguoiDung = async (req, res) => {
     try {
-        const [users] = await db.query(`SELECT ma_nguoi_dung, ho_ten, email, so_dien_thoai, dia_chi, vai_tro, ngay_tao FROM NGUOI_DUNG ORDER BY ngay_tao DESC`);
+        const [users] = await db.query(`SELECT ma_nguoi_dung, ho_ten, email, so_dien_thoai, dia_chi, vai_tro, trang_thai, ngay_tao FROM NGUOI_DUNG ORDER BY ngay_tao DESC`);
         res.json({ success: true, data: users });
     } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+};
+
+const khoaTaiKhoan = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { trang_thai } = req.body; // 'hoat_dong' | 'bi_khoa' | 'bi_cam'
+        const validStatuses = ['hoat_dong', 'bi_khoa', 'bi_cam'];
+        if (!validStatuses.includes(trang_thai)) {
+            return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
+        }
+        if (parseInt(id) === req.user.id) {
+            return res.status(400).json({ success: false, message: 'Không thể thay đổi trạng thái tài khoản của chính mình!' });
+        }
+        await db.query('UPDATE NGUOI_DUNG SET trang_thai = ? WHERE ma_nguoi_dung = ?', [trang_thai, id]);
+        const labels = { hoat_dong: 'Mở khóa', bi_khoa: 'Khóa', bi_cam: 'Cấm vĩnh viễn' };
+        res.json({ success: true, message: `${labels[trang_thai]} tài khoản thành công!` });
+    } catch (error) {
+        console.error(error);
         res.status(500).json({ success: false, message: 'Lỗi server' });
     }
 };
@@ -229,9 +299,9 @@ const xoaNguoiDung = async (req, res) => {
 };
 
 module.exports = {
-    getDashboardStats,
+    getDashboardStats, getDoanhThuChart,
     getAllDonHang, capNhatTrangThaiDonHang,
     getAllMonAn, themMonAn, suaMonAn, xoaMonAn,
     getAllDanhMuc, themDanhMuc, suaDanhMuc, xoaDanhMuc,
-    getAllNguoiDung, capNhatVaiTro, xoaNguoiDung
+    getAllNguoiDung, capNhatVaiTro, xoaNguoiDung, khoaTaiKhoan
 };

@@ -87,6 +87,14 @@ const dangNhap = async (req, res) => {
         }
 
         const user = users[0];
+        
+        // 2.1 Kiểm tra trạng thái tài khoản
+        if (user.trang_thai === 'bi_khoa') {
+            return res.status(403).json({ success: false, message: 'Tài khoản của bạn đang bị khóa tạm thời. Vui lòng liên hệ quản trị viên!' });
+        }
+        if (user.trang_thai === 'bi_cam') {
+            return res.status(403).json({ success: false, message: 'Tài khoản của bạn đã bị cấm vĩnh viễn vi phạm chính sách!' });
+        }
 
         // 3. So sánh mật khẩu trực tiếp (ko mã hóa)
         if (mat_khau !== user.mat_khau) {
