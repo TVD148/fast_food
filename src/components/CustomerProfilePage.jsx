@@ -22,7 +22,37 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAvatar(reader.result);
+        const img = new Image();
+        img.onload = () => {
+          // Nén ảnh xuống tối đa 250x250
+          const MAX_WIDTH = 250;
+          const MAX_HEIGHT = 250;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Chuyển thành JPEG với chất lượng 80% (rất nhẹ, thường < 20KB)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          setAvatar(dataUrl);
+        };
+        img.src = reader.result;
       };
       reader.readAsDataURL(file);
     }
@@ -41,6 +71,7 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
       setEmail(currentUser.email || '');
       setPhone(currentUser.phone || currentUser.so_dien_thoai || '');
       setAddress(currentUser.address || currentUser.dia_chi || '');
+      setAvatar(currentUser.hinh_anh || currentUser.avatar || null);
     }
   }, [currentUser]);
 
@@ -76,7 +107,7 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ho_ten: name, email, so_dien_thoai: phone, dia_chi: address })
+        body: JSON.stringify({ ho_ten: name, email, so_dien_thoai: phone, dia_chi: address, hinh_anh: avatar })
       });
       
       const contentType = res.headers.get("content-type");

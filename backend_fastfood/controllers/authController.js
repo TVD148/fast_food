@@ -122,7 +122,8 @@ const dangNhap = async (req, res) => {
                 phone: user.so_dien_thoai,
                 dia_chi: user.dia_chi,
                 address: user.dia_chi,
-                vai_tro: user.vai_tro 
+                vai_tro: user.vai_tro,
+                hinh_anh: user.hinh_anh
             }
         });
     } catch (error) {
@@ -255,7 +256,7 @@ const doiMatKhau = async (req, res) => {
 const capNhatThongTin = async (req, res) => {
     try {
         const ma_nguoi_dung = req.user.id;
-        const { ho_ten, email, so_dien_thoai, dia_chi } = req.body;
+        const { ho_ten, email, so_dien_thoai, dia_chi, hinh_anh } = req.body;
 
         if (!ho_ten || ho_ten.trim() === '') {
             return res.status(400).json({ success: false, message: 'Vui lòng nhập họ tên!' });
@@ -264,6 +265,7 @@ const capNhatThongTin = async (req, res) => {
         const cleanEmail = email && email.trim() !== '' ? email.trim() : null;
         const cleanPhone = so_dien_thoai && so_dien_thoai.trim() !== '' ? so_dien_thoai.trim() : null;
         const cleanAddress = dia_chi && dia_chi.trim() !== '' ? dia_chi.trim() : null;
+        const cleanAvatar = hinh_anh || null;
 
         // Kiểm tra xem email / sđt mới có bị trùng với người khác không
         if (cleanEmail) {
@@ -276,8 +278,8 @@ const capNhatThongTin = async (req, res) => {
         }
 
         await db.query(
-            'UPDATE NGUOI_DUNG SET ho_ten = ?, email = ?, so_dien_thoai = ?, dia_chi = ? WHERE ma_nguoi_dung = ?',
-            [ho_ten, cleanEmail, cleanPhone, cleanAddress, ma_nguoi_dung]
+            'UPDATE NGUOI_DUNG SET ho_ten = ?, email = ?, so_dien_thoai = ?, dia_chi = ?, hinh_anh = ? WHERE ma_nguoi_dung = ?',
+            [ho_ten, cleanEmail, cleanPhone, cleanAddress, cleanAvatar, ma_nguoi_dung]
         );
 
         // Lấy lại User sau khi cập nhật để có đủ thông tin (vai_tro,...)
@@ -296,11 +298,13 @@ const capNhatThongTin = async (req, res) => {
                 phone: updatedUser.so_dien_thoai, 
                 dia_chi: updatedUser.dia_chi,
                 address: updatedUser.dia_chi,
-                vai_tro: updatedUser.vai_tro
+                vai_tro: updatedUser.vai_tro,
+                hinh_anh: updatedUser.hinh_anh
             }
         });
     } catch (error) {
         console.error('Lỗi cập nhật:', error);
+        require('fs').appendFileSync('error_debug.log', new Date().toISOString() + ' - capNhatThongTin error: ' + (error.stack || error) + '\n');
         res.status(500).json({ success: false, message: 'Lỗi server' });
     }
 };
