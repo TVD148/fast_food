@@ -108,97 +108,114 @@ const HeroSection = () => {
         <div className="row align-items-center">
           
           {/* Cột chữ (Trái) */}
-          <div className="col-md-6 pe-md-5">
-            {slides[currentIndex].type === 'hero' ? (
-              <>
-                <h1 className="font-serif fw-bold mb-4" style={{fontSize: '4rem', lineHeight: '1.2'}}>
-                  {slides[currentIndex].title}
-                </h1>
-                <p className="text-secondary mb-5 fs-6" style={{maxWidth: '450px'}}>
-                  {slides[currentIndex].desc}
-                </p>
-              </>
-            ) : (
-              <div className="fade-in">
-                {slides[currentIndex].holidayName && (
-                  <div className="d-inline-flex align-items-center gap-2 mb-3 p-2 px-3 rounded-pill shadow-sm" style={{ background: 'linear-gradient(45deg, #ff416c, #ff4b2b)' }}>
-                    <span className="text-white fw-bold" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>{slides[currentIndex].holidayName}</span>
+          <div className="col-md-6 pe-md-5 banner-text-container position-relative" style={{ minHeight: '650px' }}>
+            <div key={currentIndex} className="fade-in" style={{ paddingBottom: '150px' }}>
+              {slides[currentIndex].type === 'hero' ? (
+                <>
+                  <h1 className="font-serif fw-bold mb-4" style={{fontSize: '3.5rem', lineHeight: '1.2'}}>
+                    {slides[currentIndex].title}
+                  </h1>
+                  <p className="text-secondary mb-5 fs-6" style={{maxWidth: '450px', minHeight: '80px'}}>
+                    {slides[currentIndex].desc}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div style={{ minHeight: '40px' }}>
+                    {slides[currentIndex].holidayName && (
+                      <div className="d-inline-flex align-items-center gap-2 mb-3 p-2 px-3 rounded-pill shadow-sm" style={{ background: 'linear-gradient(45deg, #ff416c, #ff4b2b)' }}>
+                        <span className="text-white fw-bold" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>{slides[currentIndex].holidayName}</span>
+                      </div>
+                    )}
                   </div>
-                )}
-                <h1 className="font-serif fw-bold mb-3" style={{fontSize: '3.5rem', lineHeight: '1.2', color: '#ffc107'}}>
-                  {slides[currentIndex].title}
-                </h1>
-                <p className="text-light mb-4 fs-5" style={{maxWidth: '450px'}}>
-                  {slides[currentIndex].desc}
-                </p>
+                  <h1 className="font-serif fw-bold mb-3" style={{fontSize: '3.5rem', lineHeight: '1.2', color: '#ffc107'}}>
+                    {slides[currentIndex].title}
+                  </h1>
+                  <p className="text-light mb-4 fs-5" style={{maxWidth: '450px', minHeight: '80px'}}>
+                    {slides[currentIndex].desc}
+                  </p>
 
-                {timeLeft[currentIndex] && (
-                  <div className="d-flex align-items-center mb-4 bg-dark bg-opacity-50 p-2 rounded" style={{ maxWidth: 'fit-content' }}>
-                    <span className="me-3 text-white-50 ms-2" style={{fontSize: '0.9rem'}}><i className="bi bi-clock-history me-1"></i> Kết thúc sau:</span>
-                    <div className="d-flex gap-2">
-                      {timeLeft[currentIndex].days > 0 && (
-                        <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
-                          <span className="d-block fw-bold fs-5 lh-1 text-danger">{String(timeLeft[currentIndex].days).padStart(2, '0')}</span>
-                          <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>NGÀY</small>
+                  <div style={{ minHeight: '65px' }}>
+                    {timeLeft[currentIndex] && (
+                      <div className="d-flex align-items-center mb-4 bg-dark bg-opacity-50 p-2 rounded" style={{ maxWidth: 'fit-content' }}>
+                        <span className="me-3 text-white-50 ms-2" style={{fontSize: '0.9rem'}}><i className="bi bi-clock-history me-1"></i> Kết thúc sau:</span>
+                        <div className="d-flex gap-2">
+                          {timeLeft[currentIndex].days > 0 && (
+                            <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
+                              <span className="d-block fw-bold fs-5 lh-1 text-danger">{String(timeLeft[currentIndex].days).padStart(2, '0')}</span>
+                              <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>NGÀY</small>
+                            </div>
+                          )}
+                          <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
+                            <span className="d-block fw-bold fs-5 lh-1 text-white">{String(timeLeft[currentIndex].hours).padStart(2, '0')}</span>
+                            <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>GIỜ</small>
+                          </div>
+                          <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
+                            <span className="d-block fw-bold fs-5 lh-1 text-white">{String(timeLeft[currentIndex].minutes).padStart(2, '0')}</span>
+                            <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>PHÚT</small>
+                          </div>
+                          <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
+                            <span className="d-block fw-bold fs-5 lh-1 text-warning">{String(timeLeft[currentIndex].seconds).padStart(2, '0')}</span>
+                            <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>GIÂY</small>
+                          </div>
                         </div>
-                      )}
-                      <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
-                        <span className="d-block fw-bold fs-5 lh-1 text-white">{String(timeLeft[currentIndex].hours).padStart(2, '0')}</span>
-                        <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>GIỜ</small>
                       </div>
-                      <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
-                        <span className="d-block fw-bold fs-5 lh-1 text-white">{String(timeLeft[currentIndex].minutes).padStart(2, '0')}</span>
-                        <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>PHÚT</small>
-                      </div>
-                      <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
-                        <span className="d-block fw-bold fs-5 lh-1 text-warning">{String(timeLeft[currentIndex].seconds).padStart(2, '0')}</span>
-                        <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>GIÂY</small>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                )}
 
-                <div className="mb-4 d-flex align-items-end">
-                  <span className="fs-2 fw-bold text-danger me-3 lh-1">{slides[currentIndex].price.toLocaleString()}₫</span>
-                  <span className="text-secondary text-decoration-line-through me-3 mb-1">{slides[currentIndex].originalPrice.toLocaleString()}₫</span>
-                  <span className="badge bg-success fs-6 mb-1 px-2 py-1">- {Math.round(((slides[currentIndex].originalPrice - slides[currentIndex].price) / slides[currentIndex].originalPrice) * 100)}%</span>
-                </div>
-              </div>
-            )}
-            <button className="btn btn-yellow mb-5" onClick={() => {
-              const elem = document.getElementById(slides[currentIndex].actionId);
-              if (elem) {
-                const headerOffset = 80;
-                const elementPosition = elem.getBoundingClientRect().top;
-                const offsetPosition = elementPosition + window.scrollY - headerOffset;
-                window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
-              }
-            }}>{slides[currentIndex].btnText}</button>
+                  <div className="mb-4 d-flex align-items-end" style={{ minHeight: '40px' }}>
+                    <span className="fs-2 fw-bold text-danger me-3 lh-1">{slides[currentIndex].price.toLocaleString()}₫</span>
+                    <span className="text-secondary text-decoration-line-through me-3 mb-1">{slides[currentIndex].originalPrice.toLocaleString()}₫</span>
+                    <span className="badge bg-success fs-6 mb-1 px-2 py-1">- {Math.round(((slides[currentIndex].originalPrice - slides[currentIndex].price) / slides[currentIndex].originalPrice) * 100)}%</span>
+                  </div>
+                </>
+              )}
+              <button className="btn btn-yellow mb-5" onClick={() => {
+                const elem = document.getElementById(slides[currentIndex].actionId);
+                if (elem) {
+                  const headerOffset = 80;
+                  const elementPosition = elem.getBoundingClientRect().top;
+                  const offsetPosition = elementPosition + window.scrollY - headerOffset;
+                  window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+                }
+              }}>{slides[currentIndex].btnText}</button>
+            </div>
             
-            {/* Slider Text */}
-            <div className="d-flex align-items-center gap-3">
-              <span className="fw-bold">{`0${currentIndex + 1}`}</span>
+            {/* Slider Nav - Fixed Position within container */}
+            <div className="d-flex align-items-center gap-3 position-absolute" style={{ bottom: '40px', left: '0', zIndex: 10 }}>
+              <span className="fw-bold ms-3" style={{ width: '30px', display: 'inline-block', textAlign: 'center' }}>{`0${currentIndex + 1}`}</span>
               <div style={{ width: '80px', height: '2px', backgroundColor: 'rgba(255,255,255,0.2)', position: 'relative', overflow: 'hidden' }}>
                 <div style={{ width: `${((currentIndex + 1) / slides.length) * 100}%`, height: '100%', backgroundColor: '#ffc107', transition: 'width 0.4s ease-in-out', position: 'absolute', top: 0, left: 0 }}></div>
               </div>
-              <span className="text-secondary fw-bold">{`0${slides.length}`}</span>
-              <button className="btn btn-outline-secondary rounded-circle p-2 ms-2" onClick={handlePrev}><i className="bi bi-arrow-left"></i></button>
-              <button className="btn btn-warning rounded-circle p-2" onClick={handleNext}><i className="bi bi-arrow-right"></i></button>
+              <span className="text-secondary fw-bold" style={{ width: '30px', display: 'inline-block', textAlign: 'center' }}>{`0${slides.length}`}</span>
+              <div className="d-flex gap-2 ms-2">
+                <button className="btn btn-outline-secondary rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }} onClick={handlePrev}><i className="bi bi-arrow-left"></i></button>
+                <button className="btn btn-warning rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }} onClick={handleNext}><i className="bi bi-arrow-right"></i></button>
+              </div>
             </div>
           </div>
 
           {/* Cột ảnh (Phải) */}
-          <div className="col-md-6 text-center position-relative mt-5 mt-md-0">
+          <div className="col-md-6 text-center position-relative mt-5 mt-md-0 d-flex align-items-center justify-content-center" style={{height: '650px'}}>
              {/* Mũi tên xanh lá chỉ vào burger */}
-             <div className="position-absolute top-50 start-0 translate-middle-y d-none d-md-block">
+             <div className="position-absolute top-50 start-0 translate-middle-y d-none d-md-block" style={{zIndex: 2}}>
                 <i className="bi bi-arrow-90deg-right text-green" style={{fontSize: '4rem', opacity: '0.8'}}></i>
              </div>
-             <img 
-               src={slides[currentIndex].img} 
-               alt={typeof slides[currentIndex].title === 'string' ? slides[currentIndex].title : `Slide ${currentIndex + 1}`} 
-               className="img-fluid drop-shadow" 
-               style={{maxWidth: '100%', filter: 'drop-shadow(0px 20px 30px rgba(0,0,0,0.5))', transition: 'all 0.5s ease-in-out', objectFit: 'cover', maxHeight: '500px', borderRadius: currentIndex === 0 ? '0' : '20px'}} 
-             />
+             <div key={currentIndex} className="fade-in w-100 h-100 d-flex align-items-center justify-content-center">
+               <img 
+                 src={slides[currentIndex].img} 
+                 alt={typeof slides[currentIndex].title === 'string' ? slides[currentIndex].title : `Slide ${currentIndex + 1}`} 
+                 className="img-fluid drop-shadow" 
+                 style={{
+                   maxWidth: '100%', 
+                   maxHeight: '450px',
+                   filter: 'drop-shadow(0px 20px 30px rgba(0,0,0,0.5))', 
+                   transition: 'all 0.5s ease-in-out', 
+                   objectFit: 'contain', 
+                   borderRadius: '20px'
+                 }} 
+               />
+             </div>
           </div>
 
         </div>
