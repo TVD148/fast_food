@@ -124,14 +124,21 @@ const Header = ({ onLoginClick, onNavigate }) => {
                     <i className={`bi ${currentUser?.email ? 'bi-envelope' : 'bi-telephone'} me-1`}></i>
                     {currentUser?.email || currentUser?.so_dien_thoai || 'Chưa cập nhật'}
                   </div>
-                  {currentUser?.vai_tro === 'quan_tri' && (
-                    <span className="badge bg-warning text-dark mt-1" style={{fontSize: '10px'}}>👑 Quản trị viên</span>
+                  {/* Badge vai trò */}
+                  {(currentUser?.vai_tro === 'nhan_vien' || currentUser?.vai_tro === 'quan_tri') && (
+                    <span className="badge bg-warning text-dark mt-1" style={{fontSize: '10px'}}>
+                      {currentUser?.vai_tro === 'quan_tri' ? '👑 Quản trị viên' : '🧾 Nhân viên'}
+                    </span>
                   )}
                 </li>
-                {currentUser?.vai_tro === 'quan_tri' && (
+                {/* Nút Quầy Thu Ngân - chỉ hiện với nhân viên / quản trị */}
+                {(currentUser?.vai_tro === 'nhan_vien' || currentUser?.vai_tro === 'quan_tri') && (
                   <li>
-                    <button className="dropdown-item fw-semibold py-2 text-warning" onClick={() => onNavigate('admin')}>
-                      <i className="bi bi-speedometer2 me-2"></i>Trang Quản trị
+                    <button
+                      className="dropdown-item fw-semibold py-2 text-warning"
+                      onClick={() => onNavigate('staff')}
+                    >
+                      <i className="bi bi-display me-2"></i>Quầy Thu Ngân
                     </button>
                   </li>
                 )}

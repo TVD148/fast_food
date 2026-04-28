@@ -17,6 +17,7 @@ import CheckoutModal from './components/CheckoutModal';
 import CustomerProfilePage from './components/CustomerProfilePage';
 import ExitIntentPopup from './components/ExitIntentPopup';
 import AdminPage from './components/admin/AdminPage';
+import StaffDashboard from './components/StaffDashboard';
 import { useAuth } from './contexts/AuthContext';
 
 function App() {
@@ -40,9 +41,19 @@ function App() {
     AOS.init({ duration: 800, once: true, offset: 50 });
   }, []);
 
-  // Nếu là quản trị viên → hiển thị trang Admin
+  // Nếu là quản trị viên → hiển thị trang Admin (trừ khi đang ép xem trang khách)
   if (currentUser?.vai_tro === 'quan_tri' && !forceCustomer) {
     return <AdminPage onExitAdmin={() => setForceCustomer(true)} />;
+  }
+
+  // Màn hình nhân viên (toàn trang, không có header/footer chung)
+  if (pageState.page === 'staff' && currentUser?.vai_tro === 'nhan_vien') {
+    return (
+      <StaffDashboard
+        user={currentUser}
+        onNavigateHome={() => navigateTo('home')}
+      />
+    );
   }
 
   return (
@@ -82,7 +93,17 @@ function App() {
       )}
       <Footer />                   {/* 10. Chân trang */}
 
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={(user) => {
+          // Nếu là nhân viên, tự động chuyển sang trang staff
+          if (user?.vai_tro === 'nhan_vien') {
+            navigateTo('staff');
+          }
+          // Nếu là quản trị, forceCustomer sẽ là false nên tự động hiển thị AdminPage
+        }}
+      />
       
       {/* Tính năng giỏ hàng */}
       <CartOffcanvas onCheckoutClick={() => setIsCheckoutOpen(true)} />
@@ -102,4 +123,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;

@@ -92,8 +92,49 @@ const getTop4MonAnTuanQua = async (req, res) => {
         });
     }
 };
+// [NHÂN VIÊN] LẤY TẤT CẢ MÓN ĂN (KỂ CẢ HẾT HÀNG)
+const layTatCaMonAnChoNhanVien = async (req, res) => {
+    try {
+        const sql = `
+            SELECT m.*, d.ten_danh_muc 
+            FROM MON_AN m 
+            LEFT JOIN DANH_MUC d ON m.ma_danh_muc = d.ma_danh_muc
+            ORDER BY m.ma_danh_muc, m.ten_mon
+        `;
+        const [rows] = await db.query(sql);
+        res.status(200).json({ success: true, data: rows });
+    } catch (error) {
+        console.error('Lỗi layTatCaMonAnChoNhanVien:', error);
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+};
+
+// [NHÂN VIÊN] ẨN/HIỆN MÓN ĂN NHANH (toggle trang_thai)
+const toggleTrangThaiMonAn = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Lấy trạng thái hiện tại
+        const [[monAn]] = await db.query('SELECT trang_thai FROM MON_AN WHERE ma_mon_an = ?', [id]);
+        if (!monAn) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy món ăn!' });
+        }
+        const trangThaiMoi = monAn.trang_thai === 'con_hang' ? 'het_hang' : 'con_hang';
+        await db.query('UPDATE MON_AN SET trang_thai = ? WHERE ma_mon_an = ?', [trangThaiMoi, id]);
+        res.status(200).json({ 
+            success: true, 
+            message: trangThaiMoi === 'het_hang' ? 'Đã ẩn món khỏi menu!' : 'Đã hiển thị món trở lại!',
+            trang_thai_moi: trangThaiMoi
+        });
+    } catch (error) {
+        console.error('Lỗi toggleTrangThaiMonAn:', error);
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+};
+
 module.exports = {
     getDanhSachMonAn,
     getMonAnTheoDanhMuc,
-    getTop4MonAnTuanQua
+    getTop4MonAnTuanQua,
+    layTatCaMonAnChoNhanVien,
+    toggleTrangThaiMonAn
 };

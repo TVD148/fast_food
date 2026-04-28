@@ -127,7 +127,68 @@ const layLichSuDonHang = async (req, res) => {
 };
 
 
+// [NHÂN VIÊN] LẤY TẤT CẢ ĐƠN HÀNG (kèm chi tiết món)
+const layTatCaDonHang = async (req, res) => {
+    try {
+        const { trang_thai } = req.query;
+        let sql = `
+            SELECT dh.*, nd.ho_ten AS ten_khach
+            FROM DON_HANG dh
+            LEFT JOIN NGUOI_DUNG nd ON dh.ma_nguoi_dung = nd.ma_nguoi_dung
+        `;
+        const params = [];
+        if (trang_thai && trang_thai !== 'tat_ca') {
+            sql += ' WHERE dh.trang_thai = ?';
+            params.push(trang_thai);
+        }
+        sql += ' ORDER BY dh.ngay_dat DESC';
+
+        const [danhSachDonHang] = await db.query(sql, params);
+
+        // Lấy chi tiết từng đơn
+        for (let i = 0; i < danhSachDonHang.length; i++) {
+            const ma_don_hang = danhSachDonHang[i].ma_don_hang;
+            const sqlChiTiet = `
+                SELECT ct.ma_mon_an, m.ten_mon, m.hinh_anh, ct.so_luong, ct.gia_luc_mua,
+                       (ct.so_luong * ct.gia_luc_mua) AS thanh_tien
+                FROM CHI_TIET_DON_HANG ct
+                JOIN MON_AN m ON ct.ma_mon_an = m.ma_mon_an
+                WHERE ct.ma_don_hang = ?
+            `;
+            const [chiTiet] = await db.query(sqlChiTiet, [ma_don_hang]);
+            danhSachDonHang[i].chi_tiet = chiTiet;
+        }
+
+        res.status(200).json({ success: true, data: danhSachDonHang });
+    } catch (error) {
+        console.error('Lỗi layTatCaDonHang:', error);
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+};
+
+// [NHÂN VIÊN] CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG
+const capNhatTrangThai = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { trang_thai } = req.body;
+        const dsHopLe = ['cho_duyet', 'dang_che_bien', 'dang_giao', 'hoan_thanh', 'da_huy'];
+        if (!dsHopLe.includes(trang_thai)) {
+            return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
+        }
+        const [result] = await db.query('UPDATE DON_HANG SET trang_thai = ? WHERE ma_don_hang = ?', [trang_thai, id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng!' });
+        }
+        res.status(200).json({ success: true, message: 'Cập nhật trạng thái thành công!' });
+    } catch (error) {
+        console.error('Lỗi capNhatTrangThai:', error);
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+};
+
 module.exports = {
     taoDonHang,
-    layLichSuDonHang
+    layLichSuDonHang,
+    layTatCaDonHang,
+    capNhatTrangThai
 };

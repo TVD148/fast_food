@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-const AuthModal = ({ isOpen, onClose }) => {
+const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [forgotStep, setForgotStep] = useState(1); // 1=email, 2=OTP, 3=new password
@@ -104,7 +104,10 @@ const AuthModal = ({ isOpen, onClose }) => {
       const result = await login(email, password);
       setMessage({ text: result.message, type: result.success ? 'success' : 'error' });
       if (result.success) {
-        setTimeout(() => { handleClose(); }, 1000);
+        // Gọi callback để App.jsx nhận user và xử lý redirect
+        const savedUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+        if (onLoginSuccess && savedUser) onLoginSuccess(savedUser);
+        setTimeout(() => { handleClose(); }, 800);
       }
     } else {
       if (password !== confirmPassword) {
