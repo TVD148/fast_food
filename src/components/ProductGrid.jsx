@@ -20,7 +20,8 @@ const ProductGrid = () => {
             name: p.ten_mon,
             price: Number(p.gia_ban),
             img: p.hinh_anh,
-            category: p.ten_danh_muc, 
+            category: p.ten_danh_muc,
+            co_the_ban: p.co_the_ban !== 0 // 1 or undefined means can sell, 0 means out of stock
           }));
           setProducts(formattedProducts);
         }
@@ -88,12 +89,22 @@ const ProductGrid = () => {
                   </div>
                   <p className="fw-bold product-price mb-2 mb-md-3 mt-auto">{p.price.toLocaleString('vi-VN')} <span className="text-secondary fw-normal price-unit">VNĐ</span></p>
                   <div>
-                    <button 
-                      className="btn btn-outline-secondary rounded-pill btn-sm px-2 px-md-4 py-1 py-md-2 hover-yellow-bg w-100 product-btn"
-                      onClick={() => addToCart(p)}
-                    >
-                      Đặt ngay
-                    </button>
+                    {p.co_the_ban ? (
+                      <button 
+                        className="btn btn-outline-secondary rounded-pill btn-sm px-2 px-md-4 py-1 py-md-2 hover-yellow-bg w-100 product-btn"
+                        onClick={() => addToCart(p)}
+                      >
+                        Đặt ngay
+                      </button>
+                    ) : (
+                      <button 
+                        className="btn btn-secondary rounded-pill btn-sm px-2 px-md-4 py-1 py-md-2 w-100 product-btn"
+                        disabled
+                        style={{opacity: 0.6}}
+                      >
+                        Hết hàng
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

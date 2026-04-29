@@ -59,6 +59,10 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
   };
   
   const [orders, setOrders] = useState([]);
+  const [expandedOrder, setExpandedOrder] = useState(null);
+  
+  // Review Modal State
+  const [reviewModal, setReviewModal] = useState({ isOpen: false, ma_mon_an: null, ten_mon: '', so_sao: 5, binh_luan: '' });
 
   // Sync initial tab if it changes from Parent
   useEffect(() => {
@@ -95,6 +99,29 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     }
   }, [activeTab, currentUser]);
 
+  const handleCancelOrder = async (id) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/don-hang/khach-hang-huy/${id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ text: data.message, type: 'success' });
+        // Refresh orders
+        const historyRes = await fetch(`${API_BASE_URL}/don-hang/lich-su`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const historyData = await historyRes.json();
+        if (historyData.success) setOrders(historyData.data);
+      } else {
+        setMessage({ text: data.message, type: 'error' });
+      }
+    } catch (err) {
+      setMessage({ text: 'Lỗi server khi hủy đơn', type: 'error' });
+    }
+  };
+
   // Removed reservations fetch logic
 
     const handleSaveInfo = async (e) => {
@@ -126,6 +153,34 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     } catch (err) {
       console.error(err);
       setMessage({ text: `Lỗi kết nối hoặc Trình duyệt: ${err.message}`, type: 'error' });
+    }
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/danh-gia/tao-moi`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ma_mon_an: reviewModal.ma_mon_an,
+          so_sao: reviewModal.so_sao,
+          binh_luan: reviewModal.binh_luan
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Đánh giá thành công!');
+        setReviewModal({ isOpen: false, ma_mon_an: null, ten_mon: '', so_sao: 5, binh_luan: '' });
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      alert('Lỗi khi gửi đánh giá');
     }
   };
 
@@ -344,18 +399,77 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                         <th className="py-3">Ngày Đặt</th>
                         <th className="py-3">Tổng Tiền</th>
                         <th className="py-3">Trạng Thái</th>
+                        <th className="py-3">Hành động</th>
                       </tr>
                     </thead>
                     <tbody>
                       {orders.length > 0 ? (
-                        orders.map((order, idx) => (
-                          <tr key={idx}>
+                        orders.map((order, idx) => {
+                          const orderTime = new Date(order.ngay_dat);
+                          const diffMins = (new Date() - orderTime) / 60000;
+                          const canCancel = order.trang_thai === 'cho_duyet' && diffMins <= 5;
+                          return (
+                          <React.Fragment key={idx}>
+                          <tr>
                             <td className="fw-bold text-dark small">#ORD-{order.ma_don_hang}</td>
-                            <td>{new Date(order.ngay_dat).toLocaleDateString('vi-VN')}</td>
+                            <td>{orderTime.toLocaleDateString('vi-VN')} {orderTime.toLocaleTimeString('vi-VN')}</td>
                             <td className="text-danger fw-semibold">{Number(order.tong_tien).toLocaleString('vi-VN')} đ</td>
                             <td><span className={`badge rounded-pill ${getStatusBadgeClass(order.trang_thai)} px-3 py-2`}>{getStatusText(order.trang_thai)}</span></td>
+                            <td>
+                              {canCancel && (
+                                <button className="btn btn-sm btn-outline-danger rounded-pill" onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.ma_don_hang); }}>
+                                  Hủy đơn
+                                </button>
+                              )}
+                              <button 
+                                className="btn btn-sm btn-outline-secondary rounded-pill ms-2"
+                                onClick={() => setExpandedOrder(expandedOrder === order.ma_don_hang ? null : order.ma_don_hang)}
+                              >
+                                {expandedOrder === order.ma_don_hang ? 'Đóng' : 'Chi tiết'}
+                              </button>
+                            </td>
                           </tr>
-                        ))
+                          {expandedOrder === order.ma_don_hang && (
+                            <tr className="bg-light">
+                              <td colSpan="5">
+                                <div className="p-3 text-start">
+                                  <h6 className="fw-bold mb-3">Chi tiết đơn hàng #{order.ma_don_hang}</h6>
+                                  {order.ma_giam_gia && (
+                                    <p className="small text-success mb-2">Đã áp dụng mã: {order.ma_giam_gia} (Giảm {Number(order.so_tien_giam).toLocaleString('vi-VN')} đ)</p>
+                                  )}
+                                  <div className="table-responsive">
+                                    <table className="table table-sm table-borderless align-middle">
+                                      <tbody>
+                                        {order.chi_tiet && order.chi_tiet.map((ct, idx2) => (
+                                          <tr key={idx2} className="border-bottom">
+                                            <td style={{width: '60px'}}>
+                                              <img src={ct.hinh_anh || 'https://via.placeholder.com/60'} alt={ct.ten_mon} style={{width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px'}} />
+                                            </td>
+                                            <td>
+                                              <p className="mb-0 fw-bold small">{ct.ten_mon}</p>
+                                              <p className="mb-0 small text-muted">{ct.so_luong} x {Number(ct.gia_luc_mua).toLocaleString('vi-VN')} đ</p>
+                                            </td>
+                                            <td className="text-end">
+                                              {order.trang_thai === 'hoan_thanh' && (
+                                                <button 
+                                                  className="btn btn-sm btn-warning rounded-pill py-0 px-3"
+                                                  onClick={() => setReviewModal({ isOpen: true, ma_mon_an: ct.ma_mon_an, ten_mon: ct.ten_mon, so_sao: 5, binh_luan: '' })}
+                                                >
+                                                  Đánh giá
+                                                </button>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </React.Fragment>
+                        )})
                       ) : (
                         <tr>
                           <td colSpan="4" className="text-muted py-5 text-center">
@@ -429,6 +543,54 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
           </div>
         </div>
       </div>
+      {reviewModal.isOpen && (
+        <div className="modal-backdrop fade show" style={{ zIndex: 1055 }}></div>
+      )}
+      {reviewModal.isOpen && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 rounded-4 shadow-lg">
+              <div className="modal-header bg-dark-custom text-white border-0 py-3">
+                <h5 className="modal-title font-serif fw-bold text-yellow">
+                  Đánh giá: {reviewModal.ten_mon}
+                </h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setReviewModal({ ...reviewModal, isOpen: false })}></button>
+              </div>
+              <div className="modal-body p-4">
+                <form onSubmit={handleReviewSubmit}>
+                  <div className="mb-3 text-center">
+                    <label className="form-label fw-bold d-block">Chất lượng món ăn</label>
+                    <div className="d-flex justify-content-center gap-2 fs-2 text-warning">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <i 
+                          key={star} 
+                          className={star <= reviewModal.so_sao ? "bi bi-star-fill" : "bi bi-star"}
+                          style={{cursor: 'pointer'}}
+                          onClick={() => setReviewModal({...reviewModal, so_sao: star})}
+                        ></i>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-bold small">Nhận xét của bạn (Tùy chọn)</label>
+                    <textarea 
+                      className="form-control bg-light" 
+                      rows="3" 
+                      placeholder="Chia sẻ cảm nhận của bạn về món ăn..."
+                      value={reviewModal.binh_luan}
+                      onChange={(e) => setReviewModal({...reviewModal, binh_luan: e.target.value})}
+                    ></textarea>
+                  </div>
+                  <button type="submit" className="btn btn-warning w-100 fw-bold rounded-pill py-2 shadow-sm">
+                    Gửi Đánh Giá
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

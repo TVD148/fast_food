@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const inventoryController = require('../controllers/inventoryController');
 const { xacThucToken, kiemTraAdmin } = require('../middleware/authMiddleware');
 
 // Tất cả route admin đều cần xác thực + quyền quản trị
@@ -31,5 +32,15 @@ router.get('/nguoi-dung', protect, adminController.getAllNguoiDung);
 router.put('/nguoi-dung/:id/vai-tro', protect, adminController.capNhatVaiTro);
 router.put('/nguoi-dung/:id/trang-thai', protect, adminController.khoaTaiKhoan);
 router.delete('/nguoi-dung/:id', protect, adminController.xoaNguoiDung);
+
+// Quản lý Kho Hàng
+router.get('/nguyen-lieu', protect, inventoryController.getAllNguyenLieu);
+router.post('/nguyen-lieu', protect, inventoryController.themNguyenLieu);
+router.put('/nguyen-lieu/:id', protect, inventoryController.suaNguyenLieu);
+router.delete('/nguyen-lieu/:id', protect, inventoryController.xoaNguyenLieu);
+
+// Nhập kho
+router.post('/nhap-kho', protect, inventoryController.nhapKho);
+router.get('/lich-su-nhap-kho', protect, inventoryController.getLichSuNhapKho);
 
 module.exports = router;

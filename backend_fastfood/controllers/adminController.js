@@ -130,18 +130,55 @@ const getAllDonHang = async (req, res) => {
 };
 
 const capNhatTrangThaiDonHang = async (req, res) => {
+    const conn = await db.getConnection();
     try {
+        await conn.beginTransaction();
         const { id } = req.params;
         const { trang_thai } = req.body;
         const validStatuses = ['cho_duyet', 'dang_giao', 'hoan_thanh', 'da_huy'];
         if (!validStatuses.includes(trang_thai)) {
+            await conn.release();
             return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
         }
-        await db.query('UPDATE DON_HANG SET trang_thai = ? WHERE ma_don_hang = ?', [trang_thai, id]);
+
+        // Kiểm tra trạng thái hiện tại
+        const [donHang] = await conn.query('SELECT trang_thai FROM DON_HANG WHERE ma_don_hang = ? FOR UPDATE', [id]);
+        if (donHang.length === 0) {
+            await conn.release();
+            return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+        }
+
+        const currentStatus = donHang[0].trang_thai;
+
+        // Nếu admin hủy đơn hàng đang ở trạng thái 'cho_duyet', hoàn trả nguyên liệu
+        if (trang_thai === 'da_huy' && currentStatus === 'cho_duyet') {
+            const [chiTiet] = await conn.query(`
+                SELECT ct.ma_mon_an, ct.so_luong, c.ma_nguyen_lieu, c.so_luong_can 
+                FROM CHI_TIET_DON_HANG ct 
+                JOIN cong_thuc_mon_an c ON ct.ma_mon_an = c.ma_mon_an 
+                WHERE ct.ma_don_hang = ?
+            `, [id]);
+
+            const hoanTra = {};
+            for (let row of chiTiet) {
+                if (!hoanTra[row.ma_nguyen_lieu]) hoanTra[row.ma_nguyen_lieu] = 0;
+                hoanTra[row.ma_nguyen_lieu] += row.so_luong * row.so_luong_can;
+            }
+
+            for (const [ma_nguyen_lieu, so_luong] of Object.entries(hoanTra)) {
+                await conn.query('UPDATE nguyen_lieu SET so_luong_ton = so_luong_ton + ? WHERE ma_nguyen_lieu = ?', [so_luong, ma_nguyen_lieu]);
+            }
+        }
+
+        await conn.query('UPDATE DON_HANG SET trang_thai = ? WHERE ma_don_hang = ?', [trang_thai, id]);
+        await conn.commit();
         res.json({ success: true, message: 'Cập nhật trạng thái đơn hàng thành công!' });
     } catch (error) {
+        await conn.rollback();
         console.error(error);
         res.status(500).json({ success: false, message: 'Lỗi server' });
+    } finally {
+        conn.release();
     }
 };
 
@@ -153,37 +190,101 @@ const getAllMonAn = async (req, res) => {
             FROM MON_AN m LEFT JOIN DANH_MUC d ON m.ma_danh_muc = d.ma_danh_muc
             ORDER BY m.ma_mon_an DESC
         `);
+
+        for (let mon of monAns) {
+            const [congThuc] = await db.query(`
+                SELECT c.ma_nguyen_lieu, c.so_luong_can, n.ten_nguyen_lieu, n.don_vi_tinh 
+                FROM cong_thuc_mon_an c 
+                JOIN nguyen_lieu n ON c.ma_nguyen_lieu = n.ma_nguyen_lieu 
+                WHERE c.ma_mon_an = ?
+            `, [mon.ma_mon_an]);
+            mon.cong_thuc = congThuc;
+        }
+
         res.json({ success: true, data: monAns });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ success: false, message: 'Lỗi server' });
     }
 };
 
 const themMonAn = async (req, res) => {
+    const conn = await db.getConnection();
     try {
-        const { ten_mon, mo_ta, gia_ban, hinh_anh, ma_danh_muc, trang_thai } = req.body;
-        if (!ten_mon || !gia_ban) return res.status(400).json({ success: false, message: 'Tên món và giá không được để trống!' });
-        const [result] = await db.query(
+        await conn.beginTransaction();
+        const { ten_mon, mo_ta, gia_ban, hinh_anh, ma_danh_muc, trang_thai, cong_thuc } = req.body;
+        if (!ten_mon || !gia_ban) {
+            await conn.release();
+            return res.status(400).json({ success: false, message: 'Tên món và giá không được để trống!' });
+        }
+        if (!cong_thuc || cong_thuc.length === 0) {
+            await conn.release();
+            return res.status(400).json({ success: false, message: 'Món ăn bắt buộc phải có ít nhất 1 nguyên liệu cấu thành!' });
+        }
+
+        const [result] = await conn.query(
             'INSERT INTO MON_AN (ten_mon, mo_ta, gia_ban, hinh_anh, ma_danh_muc, trang_thai) VALUES (?,?,?,?,?,?)',
             [ten_mon, mo_ta || null, gia_ban, hinh_anh || null, ma_danh_muc || null, trang_thai || 'con_hang']
         );
-        res.status(201).json({ success: true, message: 'Thêm món ăn thành công!', id: result.insertId });
+        const ma_mon_an = result.insertId;
+
+        for (let ct of cong_thuc) {
+            await conn.query(
+                'INSERT INTO cong_thuc_mon_an (ma_mon_an, ma_nguyen_lieu, so_luong_can) VALUES (?, ?, ?)',
+                [ma_mon_an, ct.ma_nguyen_lieu, ct.so_luong_can]
+            );
+        }
+
+        await conn.commit();
+        res.status(201).json({ success: true, message: 'Thêm món ăn thành công!', id: ma_mon_an });
     } catch (error) {
+        await conn.rollback();
+        console.error(error);
         res.status(500).json({ success: false, message: 'Lỗi server' });
+    } finally {
+        conn.release();
     }
 };
 
 const suaMonAn = async (req, res) => {
+    const conn = await db.getConnection();
     try {
+        await conn.beginTransaction();
         const { id } = req.params;
-        const { ten_mon, mo_ta, gia_ban, hinh_anh, ma_danh_muc, trang_thai } = req.body;
-        await db.query(
+        const { ten_mon, mo_ta, gia_ban, hinh_anh, ma_danh_muc, trang_thai, cong_thuc } = req.body;
+        
+        if (!ten_mon || !gia_ban) {
+            await conn.release();
+            return res.status(400).json({ success: false, message: 'Tên món và giá không được để trống!' });
+        }
+        if (!cong_thuc || cong_thuc.length === 0) {
+            await conn.release();
+            return res.status(400).json({ success: false, message: 'Món ăn bắt buộc phải có ít nhất 1 nguyên liệu cấu thành!' });
+        }
+
+        await conn.query(
             'UPDATE MON_AN SET ten_mon=?, mo_ta=?, gia_ban=?, hinh_anh=?, ma_danh_muc=?, trang_thai=? WHERE ma_mon_an=?',
             [ten_mon, mo_ta, gia_ban, hinh_anh, ma_danh_muc, trang_thai, id]
         );
+
+        // Delete old recipe and insert new recipe
+        await conn.query('DELETE FROM cong_thuc_mon_an WHERE ma_mon_an = ?', [id]);
+        
+        for (let ct of cong_thuc) {
+            await conn.query(
+                'INSERT INTO cong_thuc_mon_an (ma_mon_an, ma_nguyen_lieu, so_luong_can) VALUES (?, ?, ?)',
+                [id, ct.ma_nguyen_lieu, ct.so_luong_can]
+            );
+        }
+
+        await conn.commit();
         res.json({ success: true, message: 'Cập nhật món ăn thành công!' });
     } catch (error) {
+        await conn.rollback();
+        console.error(error);
         res.status(500).json({ success: false, message: 'Lỗi server' });
+    } finally {
+        conn.release();
     }
 };
 
