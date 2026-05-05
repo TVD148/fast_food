@@ -135,9 +135,9 @@ const OrderCard = ({ order, onStatusChange, onPrint }) => {
       </div>
       <div className="order-card-body">
         <div className="order-customer">
-          <div className="order-avatar">{(order.ho_ten_nguoi_nhan||'K')[0].toUpperCase()}</div>
+          <div className="order-avatar">{(order.ho_ten_nguoi_nhan||order.ten_khach||'K')[0].toUpperCase()}</div>
           <div className="order-customer-info">
-            <div className="order-customer-name">{order.ho_ten_nguoi_nhan||'Khách lẻ'} <span className="payment-badge">{PAY_LABEL[order.phuong_thuc_thanh_toan]||order.phuong_thuc_thanh_toan}</span></div>
+            <div className="order-customer-name">{order.ho_ten_nguoi_nhan||order.ten_khach||'Khách lẻ'} <span className="payment-badge">{PAY_LABEL[order.phuong_thuc_thanh_toan]||order.phuong_thuc_thanh_toan}</span></div>
             <div className="order-customer-phone">{order.so_dien_thoai_giao}</div>
             <div className="order-address">📍 {order.dia_chi_giao_hang}</div>
           </div>
