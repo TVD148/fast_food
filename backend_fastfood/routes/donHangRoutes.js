@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const nhanVienController = require('../controllers/nhanVienController');
 const donHangController = require('../controllers/donHangController');
 const { xacThucToken, optionalAuth, xacThucNhanVien } = require('../middleware/authMiddleware');
 
-// --- KHÁCH HÀNG ---
+// ─── KHÁCH HÀNG ───────────────────────────────────────────
 // Khách hàng vãng lai vẫn có thể đặt hàng
 router.post('/tao-don', optionalAuth, donHangController.taoDonHang);
 // Xem lịch sử mua hàng
@@ -13,10 +14,14 @@ router.put('/khach-hang-huy/:id', xacThucToken, donHangController.khachHangHuyDo
 // Kiểm tra mã giảm giá
 router.post('/kiem-tra-ma', optionalAuth, donHangController.kiemTraMaGiamGia);
 
-// --- NHÂN VIÊN ---
-// Lấy tất cả đơn hàng
-router.get('/tat-ca', xacThucNhanVien, donHangController.layTatCaDonHang);
-// Cập nhật trạng thái đơn hàng
-router.put('/:id/trang-thai', xacThucNhanVien, donHangController.capNhatTrangThai);
+// ─── NHÂN VIÊN ────────────────────────────────────────────
+// Thống kê ca làm hôm nay
+router.get('/nhan-vien/thong-ke-ca', xacThucNhanVien, nhanVienController.layThongKeCa);
+// Lấy danh sách đơn hàng (filter + pagination + tìm kiếm)
+router.get('/nhan-vien/don-hang', xacThucNhanVien, nhanVienController.layDanhSachDonHang);
+// Cập nhật trạng thái đơn (chỉ chiều thuận)
+router.put('/nhan-vien/:id/trang-thai', xacThucNhanVien, nhanVienController.capNhatTrangThai);
+// Gửi hóa đơn email
+router.post('/nhan-vien/:id/gui-email', xacThucNhanVien, nhanVienController.guiHoaDonEmail);
 
 module.exports = router;
