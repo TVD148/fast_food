@@ -5,6 +5,7 @@ import AdminOrders from './AdminOrders';
 import AdminMenu from './AdminMenu';
 import AdminCategories from './AdminCategories';
 import AdminUsers from './AdminUsers';
+import AdminInventory from './AdminInventory';
 import './admin.css';
 
 const NAV_ITEMS = [
@@ -12,6 +13,7 @@ const NAV_ITEMS = [
     { key: 'orders',    label: 'Đơn hàng',  icon: '🛒' },
     { key: 'menu',      label: 'Thực đơn',  icon: '🍔' },
     { key: 'categories',label: 'Danh mục',  icon: '📂' },
+    { key: 'inventory', label: 'Kho hàng',  icon: '📦' },
     { key: 'users',     label: 'Người dùng',icon: '👥' },
 ];
 
@@ -28,6 +30,7 @@ export default function AdminPage({ onExitAdmin }) {
             case 'orders':      return <AdminOrders />;
             case 'menu':        return <AdminMenu />;
             case 'categories':  return <AdminCategories />;
+            case 'inventory':   return <AdminInventory />;
             case 'users':       return <AdminUsers />;
             default:            return <AdminDashboard onNavigate={setActiveTab} />;
         }

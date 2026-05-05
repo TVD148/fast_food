@@ -15,8 +15,12 @@ const CheckoutModal = ({ isOpen, onClose }) => {
     phone: '',
     address: '',
     note: '',
-    paymentMethod: 'cash' // Changed from 'tien_mat' in UI mapping previously, but backend maps it anyway? Wait, backend needs 'tien_mat', we should send 'tien_mat'. I'll map it to DB ENUM later.
+    paymentMethod: 'cash'
   });
+
+  const [voucherCode, setVoucherCode] = useState('');
+  const [discountData, setDiscountData] = useState(null);
+  const [voucherMessage, setVoucherMessage] = useState({ text: '', type: '' });
 
   React.useEffect(() => {
     if (isOpen && currentUser) {
@@ -38,6 +42,34 @@ const CheckoutModal = ({ isOpen, onClose }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setVoucherMessage({ text: 'Đang kiểm tra...', type: 'info' });
+    try {
+      const res = await fetch(`${API_BASE_URL}/don-hang/kiem-tra-ma`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ma_giam_gia: voucherCode, tong_tien: getCartTotal() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDiscountData(data.data);
+        setVoucherMessage({ text: data.message, type: 'success' });
+      } else {
+        setDiscountData(null);
+        setVoucherMessage({ text: data.message, type: 'error' });
+      }
+    } catch (err) {
+      setVoucherMessage({ text: 'Lỗi kiểm tra mã giảm giá', type: 'error' });
+    }
+  };
+
+  const getFinalTotal = () => {
+    const base = getCartTotal();
+    const discount = discountData ? discountData.so_tien_giam : 0;
+    return Math.max(base - discount, 0);
   };
 
   const handleSubmit = (e) => {
@@ -64,6 +96,7 @@ const CheckoutModal = ({ isOpen, onClose }) => {
         so_dien_thoai_giao: formData.phone,
         ghi_chu: formData.note,
         phuong_thuc_thanh_toan: dbPaymentMethod,
+        ma_giam_gia: discountData ? discountData.ma_code : null,
         san_pham: cartItems.map(item => ({ ma_mon_an: item.id, so_luong: item.quantity }))
       };
       
@@ -108,6 +141,9 @@ const CheckoutModal = ({ isOpen, onClose }) => {
   const resetAndClose = () => {
     setStep('form');
     setFormData({ name: '', phone: '', address: '', note: '', paymentMethod: 'cash' });
+    setVoucherCode('');
+    setDiscountData(null);
+    setVoucherMessage({ text: '', type: '' });
     onClose();
   };
 
@@ -170,21 +206,16 @@ const CheckoutModal = ({ isOpen, onClose }) => {
               {step === 'qr' && (
                 <div className="text-center py-5 px-4">
                   <div className="mb-3">
-                    <span 
-                      className="badge rounded-pill px-3 py-2 fs-6"
-                      style={{ 
-                        backgroundColor: formData.paymentMethod === 'momo' ? '#d63384' : '#0d6efd',
-                        color: '#fff'
-                      }}
-                    >
-                      <i className={`bi ${formData.paymentMethod === 'momo' ? 'bi-wallet' : 'bi-credit-card-2-front'} me-2`}></i>
-                      Thanh toán qua {formData.paymentMethod === 'momo' ? 'MoMo' : 'Ngân hàng'}
-                    </span>
+                    <img 
+                      src={formData.paymentMethod === 'momo' ? 'https://upload.wikimedia.org/wikipedia/vi/f/fe/MoMo_Logo.png' : 'https://vnpay.vn/s1/statics.vnpay.vn/2023/9/06ncktiwd6dc1694418189874.png'} 
+                      alt="Payment Gateway" 
+                      style={{ height: '40px', objectFit: 'contain' }}
+                    />
                   </div>
 
-                  <h4 className="fw-bold font-serif mb-2">Quét mã QR để thanh toán</h4>
+                  <h4 className="fw-bold font-serif mb-2">Cổng thanh toán giả lập</h4>
                   <p className="text-secondary mb-4">
-                    Số tiền: <strong className="text-danger fs-5">{getCartTotal().toLocaleString('vi-VN')} VNĐ</strong>
+                    Số tiền cần thanh toán: <strong className="text-danger fs-5">{getFinalTotal().toLocaleString('vi-VN')} VNĐ</strong>
                   </p>
 
                   <div 
@@ -356,9 +387,35 @@ const CheckoutModal = ({ isOpen, onClose }) => {
                       <span>Phí giao hàng:</span>
                       <span className="fw-semibold text-dark">Miễn phí</span>
                     </div>
+
+                    <div className="mt-3 mb-2">
+                      <div className="input-group input-group-sm">
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          placeholder="Nhập mã giảm giá" 
+                          value={voucherCode}
+                          onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                        />
+                        <button className="btn btn-dark" type="button" onClick={handleApplyVoucher}>Áp dụng</button>
+                      </div>
+                      {voucherMessage.text && (
+                        <div className={`small mt-1 ${voucherMessage.type === 'success' ? 'text-success' : 'text-danger'}`}>
+                          {voucherMessage.text}
+                        </div>
+                      )}
+                    </div>
+
+                    {discountData && (
+                      <div className="d-flex justify-content-between mb-2 text-success">
+                        <span>Mã giảm giá ({discountData.ma_code}):</span>
+                        <span className="fw-semibold">- {discountData.so_tien_giam.toLocaleString('vi-VN')} đ</span>
+                      </div>
+                    )}
+
                     <div className="d-flex justify-content-between mt-3 pt-3 border-top">
                       <span className="fw-bold fs-5">Tổng cộng:</span>
-                      <span className="fw-bold fs-5 text-danger">{getCartTotal().toLocaleString('vi-VN')} đ</span>
+                      <span className="fw-bold fs-5 text-danger">{getFinalTotal().toLocaleString('vi-VN')} đ</span>
                     </div>
                   </div>
                 </div>

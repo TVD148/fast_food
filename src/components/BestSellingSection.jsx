@@ -18,7 +18,8 @@ const BestSellingSection = () => {
             name: item.name,
             price: Number(item.price),
             img: item.image,
-            bg: bgColors[index % bgColors.length]
+            bg: bgColors[index % bgColors.length],
+            co_the_ban: item.co_the_ban !== 0
           }));
           setBestSellers(formattedData);
         } else {
@@ -67,13 +68,23 @@ const BestSellingSection = () => {
                 </div>
                 <div className="d-flex justify-content-between align-items-center mt-auto">
                     <p className="fw-bold fs-5 mb-0">{item.price.toLocaleString('vi-VN')} <span className="text-secondary fs-6 fw-normal">VNĐ</span></p>
-                    <button 
-                      className="btn btn-warning rounded-circle btn-sm shadow-sm" style={{ width: '35px', height: '35px' }}
-                      title="Thêm vào giỏ"
-                      onClick={() => addToCart(item)}
-                    >
-                      <i className="bi bi-plus-lg text-dark"></i>
-                    </button>
+                    {item.co_the_ban !== false ? (
+                      <button 
+                        className="btn btn-warning rounded-circle btn-sm shadow-sm" style={{ width: '35px', height: '35px' }}
+                        title="Thêm vào giỏ"
+                        onClick={() => addToCart(item)}
+                      >
+                        <i className="bi bi-plus-lg text-dark"></i>
+                      </button>
+                    ) : (
+                      <button 
+                        className="btn btn-secondary rounded-circle btn-sm shadow-sm" style={{ width: '35px', height: '35px', opacity: 0.6 }}
+                        title="Hết hàng"
+                        disabled
+                      >
+                        <i className="bi bi-dash text-light"></i>
+                      </button>
+                    )}
                 </div>
               </div>
             </div>
