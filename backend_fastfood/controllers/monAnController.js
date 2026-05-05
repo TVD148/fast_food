@@ -13,7 +13,7 @@ const getDanhSachMonAn = async (req, res) => {
                    (SELECT IFNULL(ROUND(AVG(so_sao), 1), 5) FROM danh_gia dg WHERE dg.ma_mon_an = m.ma_mon_an) AS rating
             FROM MON_AN m 
             LEFT JOIN DANH_MUC d ON m.ma_danh_muc = d.ma_danh_muc 
-            WHERE m.trang_thai = 'dang_ban'
+            WHERE m.trang_thai = 'con_hang'
         `;
         const [rows] = await db.query(sql);
 
@@ -43,7 +43,7 @@ const getMonAnTheoDanhMuc = async (req, res) => {
                    (SELECT IFNULL(ROUND(AVG(so_sao), 1), 5) FROM danh_gia dg WHERE dg.ma_mon_an = m.ma_mon_an) AS rating
             FROM MON_AN m 
             JOIN DANH_MUC d ON m.ma_danh_muc = d.ma_danh_muc 
-            WHERE m.trang_thai = 'dang_ban' AND m.ma_danh_muc = ?
+            WHERE m.trang_thai = 'con_hang' AND m.ma_danh_muc = ?
         `;
         // Truyền ma_danh_muc vào thay cho dấu ?
         const [rows] = await db.query(sql, [ma_danh_muc]);
@@ -87,7 +87,7 @@ const getTop4MonAnTuanQua = async (req, res) => {
             JOIN DON_HANG d ON c.ma_don_hang = d.ma_don_hang
             WHERE d.ngay_dat >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) 
               AND d.trang_thai = 'hoan_thanh'
-              AND m.trang_thai = 'dang_ban'
+              AND m.trang_thai = 'con_hang'
             GROUP BY m.ma_mon_an
             ORDER BY total_sold DESC
             LIMIT 4;
