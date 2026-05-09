@@ -52,7 +52,7 @@ function useDebounce(value, delay) {
   return debouncedValue;
 }
 
-const MapPickerModal = ({ isOpen, onClose, onConfirm, initialAddress }) => {
+const MapPickerModal = ({ isOpen, onClose, onConfirm, initialAddress, initialPosition }) => {
   // TP.HCM mặc định
   const defaultPosition = [10.7769, 106.7009];
   const [markerPos, setMarkerPos] = useState(null);
@@ -71,14 +71,21 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialAddress }) => {
   // Reset khi mở modal
   useEffect(() => {
     if (isOpen) {
-      setMarkerPos(null);
-      setAddress('');
-      setSearchText(initialAddress || '');
+      if (initialPosition) {
+        setMarkerPos(initialPosition);
+        setFlyTo(initialPosition);
+        setAddress(initialAddress || '');
+        setSearchText(initialAddress || '');
+      } else {
+        setMarkerPos(null);
+        setAddress('');
+        setSearchText(initialAddress || '');
+        setFlyTo(null);
+      }
       setSearchResults([]);
-      setFlyTo(null);
       setShowDropdown(false);
     }
-  }, [isOpen, initialAddress]);
+  }, [isOpen, initialAddress, initialPosition]);
 
   // Tìm kiếm địa chỉ khi người dùng gõ
   useEffect(() => {

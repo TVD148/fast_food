@@ -5,6 +5,17 @@ import { useCart } from '../contexts/CartContext';
 const BestSellingSection = () => {
   const { addToCart } = useCart();
   const [bestSellers, setBestSellers] = useState([]);
+  const [addingId, setAddingId] = useState(null);
+  const [showToast, setShowToast] = useState(null);
+
+  const handleAddToCart = (product) => {
+    addToCart(product);
+    setAddingId(product.id);
+    setShowToast(product.name);
+    
+    setTimeout(() => setAddingId(null), 1500);
+    setTimeout(() => setShowToast(null), 2500);
+  };
 
   useEffect(() => {
     const fetchBestSellers = async () => {
@@ -63,18 +74,15 @@ const BestSellingSection = () => {
                   <img src={item.img} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} className="d-block mx-auto hover-scale" />
                 </div>
                 <h6 className="fw-bold mb-2">{item.name}</h6>
-                <div className="text-warning mb-2" style={{ fontSize: '12px' }}>
-                  <i className="bi bi-star-fill"></i><i className="bi bi-star-fill"></i><i className="bi bi-star-fill"></i><i className="bi bi-star-fill"></i><i className="bi bi-star-fill"></i>
-                </div>
                 <div className="d-flex justify-content-between align-items-center mt-auto">
                     <p className="fw-bold fs-5 mb-0">{item.price.toLocaleString('vi-VN')} <span className="text-secondary fs-6 fw-normal">VNĐ</span></p>
                     {item.co_the_ban !== false ? (
                       <button 
-                        className="btn btn-warning rounded-circle btn-sm shadow-sm" style={{ width: '35px', height: '35px' }}
+                        className={`btn ${addingId === item.id ? 'btn-success' : 'btn-warning'} rounded-circle btn-sm shadow-sm`} style={{ width: '35px', height: '35px' }}
                         title="Thêm vào giỏ"
-                        onClick={() => addToCart(item)}
+                        onClick={() => handleAddToCart(item)}
                       >
-                        <i className="bi bi-plus-lg text-dark"></i>
+                        <i className={`bi ${addingId === item.id ? 'bi-check-lg' : 'bi-plus-lg'} ${addingId === item.id ? 'text-white' : 'text-dark'}`}></i>
                       </button>
                     ) : (
                       <button 
@@ -91,8 +99,40 @@ const BestSellingSection = () => {
           ))}
         </div>
 
+        {/* Toast thông báo */}
+        <div className={`cart-toast ${showToast ? 'show' : ''}`}>
+          <div className="toast-content">
+            <i className="bi bi-check-circle-fill text-success me-2"></i>
+            Đã thêm <strong>{showToast}</strong> vào giỏ hàng!
+          </div>
+        </div>
+
 
       </div>
+      <style>{`
+        .cart-toast {
+          position: fixed;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%) translateY(100px);
+          background: white;
+          padding: 12px 24px;
+          border-radius: 50px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+          z-index: 9999;
+          transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          border: 1px solid #eee;
+        }
+        .cart-toast.show {
+          transform: translateX(-50%) translateY(0);
+        }
+        .toast-content {
+          display: flex;
+          align-items: center;
+          font-size: 14px;
+          color: #333;
+        }
+      `}</style>
     </section>
   );
 };

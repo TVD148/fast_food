@@ -43,4 +43,14 @@ router.delete('/nguyen-lieu/:id', protect, inventoryController.xoaNguyenLieu);
 router.post('/nhap-kho', protect, inventoryController.nhapKho);
 router.get('/lich-su-nhap-kho', protect, inventoryController.getLichSuNhapKho);
 
+// Xuất kho
+router.post('/xuat-kho', protect, inventoryController.xuatKho);
+router.get('/lich-su-xuat-kho', protect, inventoryController.getLichSuXuatKho);
+
+// Mã giảm giá
+router.get('/ma-giam-gia', protect, adminController.getAllVouchers);
+router.post('/ma-giam-gia', protect, adminController.themVoucher);
+router.put('/ma-giam-gia/:code', protect, adminController.suaVoucher);
+router.delete('/ma-giam-gia/:code', protect, adminController.xoaVoucher);
+
 module.exports = router;

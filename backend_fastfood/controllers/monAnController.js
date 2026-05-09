@@ -9,8 +9,7 @@ const getDanhSachMonAn = async (req, res) => {
                        SELECT 1 FROM cong_thuc_mon_an c 
                        JOIN nguyen_lieu n ON c.ma_nguyen_lieu = n.ma_nguyen_lieu 
                        WHERE c.ma_mon_an = m.ma_mon_an AND n.so_luong_ton < c.so_luong_can
-                   ) AS co_the_ban,
-                   (SELECT IFNULL(ROUND(AVG(so_sao), 1), 5) FROM danh_gia dg WHERE dg.ma_mon_an = m.ma_mon_an) AS rating
+                   ) AS co_the_ban
             FROM MON_AN m 
             LEFT JOIN DANH_MUC d ON m.ma_danh_muc = d.ma_danh_muc 
             WHERE m.trang_thai = 'con_hang'
@@ -39,8 +38,7 @@ const getMonAnTheoDanhMuc = async (req, res) => {
                        SELECT 1 FROM cong_thuc_mon_an c 
                        JOIN nguyen_lieu n ON c.ma_nguyen_lieu = n.ma_nguyen_lieu 
                        WHERE c.ma_mon_an = m.ma_mon_an AND n.so_luong_ton < c.so_luong_can
-                   ) AS co_the_ban,
-                   (SELECT IFNULL(ROUND(AVG(so_sao), 1), 5) FROM danh_gia dg WHERE dg.ma_mon_an = m.ma_mon_an) AS rating
+                   ) AS co_the_ban
             FROM MON_AN m 
             JOIN DANH_MUC d ON m.ma_danh_muc = d.ma_danh_muc 
             WHERE m.trang_thai = 'con_hang' AND m.ma_danh_muc = ?
@@ -75,7 +73,6 @@ const getTop4MonAnTuanQua = async (req, res) => {
                 m.ten_mon AS name, 
                 m.hinh_anh AS image, 
                 m.gia_ban AS price,
-                (SELECT IFNULL(ROUND(AVG(so_sao), 1), 5) FROM danh_gia dg WHERE dg.ma_mon_an = m.ma_mon_an) AS rating,
                 SUM(c.so_luong) AS total_sold,
                 NOT EXISTS (
                     SELECT 1 FROM cong_thuc_mon_an ct 

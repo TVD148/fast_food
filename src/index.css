@@ -84,3 +84,20 @@ body {
     min-height: 400px;
   }
 }
+
+/* Floating Animation */
+@keyframes floating {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+  100% { transform: translateY(0px); }
+}
+.floating-animation {
+  animation: floating 4s ease-in-out infinite;
+}
+
+.hover-translate-y {
+  transition: transform 0.3s ease;
+}
+.hover-translate-y:hover {
+  transform: translateY(-10px);
+}

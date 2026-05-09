@@ -1,86 +1,8 @@
--- ============================================================
--- Schema database Fast Food (ĐÃ SỬA - đồng bộ với code)
--- Cập nhật: 2026-05-05
--- ============================================================
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
 
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-START TRANSACTION;
-SET time_zone = "+00:00";
-/*!40101 SET NAMES utf8mb4 */;
-
--- --------------------------------------------------------
--- Bảng `danh_muc`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `danh_muc` (
-  `ma_danh_muc` int(11) NOT NULL AUTO_INCREMENT,
-  `ten_danh_muc` varchar(255) NOT NULL,
-  `mo_ta` text DEFAULT NULL,
-  `hinh_anh` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`ma_danh_muc`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
--- Bảng `mon_an`
--- FIX: enum 'con_hang'/'het_hang' (code dùng, không phải 'dang_ban'/'ngung_ban')
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mon_an` (
-  `ma_mon_an` int(11) NOT NULL AUTO_INCREMENT,
-  `ten_mon` varchar(255) NOT NULL,
-  `mo_ta` text DEFAULT NULL,
-  `gia_ban` decimal(10,2) NOT NULL,
-  `hinh_anh` varchar(255) DEFAULT NULL,
-  `ma_danh_muc` int(11) DEFAULT NULL,
-  `trang_thai` enum('con_hang','het_hang') NOT NULL DEFAULT 'con_hang',
-  PRIMARY KEY (`ma_mon_an`),
-  KEY `ma_danh_muc` (`ma_danh_muc`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
--- Bảng `nguoi_dung`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `nguoi_dung` (
-  `ma_nguoi_dung` int(11) NOT NULL AUTO_INCREMENT,
-  `ho_ten` varchar(255) NOT NULL,
-  `email` varchar(255) DEFAULT NULL,
-  `mat_khau` varchar(255) NOT NULL,
-  `so_dien_thoai` varchar(20) DEFAULT NULL,
-  `dia_chi` text DEFAULT NULL,
-  `vai_tro` enum('khach_hang','nhan_vien','quan_tri') NOT NULL DEFAULT 'khach_hang',
-  `trang_thai` enum('hoat_dong','bi_khoa','bi_cam') NOT NULL DEFAULT 'hoat_dong',
-  `token_quen_mat_khau` varchar(255) DEFAULT NULL,
-  `han_token` datetime DEFAULT NULL,
-  `ngay_tao` datetime DEFAULT current_timestamp(),
-  PRIMARY KEY (`ma_nguoi_dung`),
-  UNIQUE KEY `email` (`email`),
-  UNIQUE KEY `uk_sdt` (`so_dien_thoai`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
--- Bảng `don_hang`
--- FIX 1: thêm 'dang_che_bien' vào enum trang_thai
--- FIX 2: ma_nguoi_dung cho phép NULL (khách vãng lai)
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `don_hang` (
-  `ma_don_hang` int(11) NOT NULL AUTO_INCREMENT,
-  `ma_nguoi_dung` int(11) DEFAULT NULL,
-  `tong_tien` decimal(10,2) NOT NULL,
-  `trang_thai` enum('cho_duyet','dang_che_bien','dang_giao','hoan_thanh','da_huy') NOT NULL DEFAULT 'cho_duyet',
-  `ho_ten_nguoi_nhan` varchar(150) NOT NULL DEFAULT '',
-  `dia_chi_giao_hang` text NOT NULL,
-  `so_dien_thoai_giao` varchar(20) NOT NULL,
-  `ghi_chu` text DEFAULT NULL,
-  `phuong_thuc_thanh_toan` enum('tien_mat','the','momo') DEFAULT 'tien_mat',
-  `ma_giam_gia` varchar(50) DEFAULT NULL,
-  `so_tien_giam` decimal(10,2) DEFAULT 0.00,
-  `ngay_dat` datetime DEFAULT current_timestamp(),
-  PRIMARY KEY (`ma_don_hang`),
-  KEY `ma_nguoi_dung` (`ma_nguoi_dung`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
--- Bảng `chi_tiet_don_hang`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `chi_tiet_don_hang` (
+DROP TABLE IF EXISTS `chi_tiet_don_hang`;
+CREATE TABLE `chi_tiet_don_hang` (
   `ma_chi_tiet` int(11) NOT NULL AUTO_INCREMENT,
   `ma_don_hang` int(11) NOT NULL,
   `ma_mon_an` int(11) NOT NULL,
@@ -88,39 +10,126 @@ CREATE TABLE IF NOT EXISTS `chi_tiet_don_hang` (
   `gia_luc_mua` decimal(10,2) NOT NULL,
   PRIMARY KEY (`ma_chi_tiet`),
   KEY `ma_don_hang` (`ma_don_hang`),
-  KEY `ma_mon_an` (`ma_mon_an`)
+  KEY `ma_mon_an` (`ma_mon_an`),
+  CONSTRAINT `chi_tiet_don_hang_ibfk_1` FOREIGN KEY (`ma_don_hang`) REFERENCES `don_hang` (`ma_don_hang`) ON DELETE CASCADE,
+  CONSTRAINT `chi_tiet_don_hang_ibfk_2` FOREIGN KEY (`ma_mon_an`) REFERENCES `mon_an` (`ma_mon_an`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `chi_tiet_nhap_kho`;
+CREATE TABLE `chi_tiet_nhap_kho` (
+  `ma_chi_tiet` int(11) NOT NULL AUTO_INCREMENT,
+  `ma_nhap_kho` int(11) NOT NULL,
+  `ma_nguyen_lieu` int(11) NOT NULL,
+  `so_luong` decimal(10,2) NOT NULL,
+  `don_gia` decimal(10,2) NOT NULL,
+  PRIMARY KEY (`ma_chi_tiet`),
+  KEY `ma_nhap_kho` (`ma_nhap_kho`),
+  KEY `ma_nguyen_lieu` (`ma_nguyen_lieu`),
+  CONSTRAINT `chi_tiet_nhap_kho_ibfk_1` FOREIGN KEY (`ma_nhap_kho`) REFERENCES `lich_su_nhap_kho` (`ma_nhap_kho`) ON DELETE CASCADE,
+  CONSTRAINT `chi_tiet_nhap_kho_ibfk_2` FOREIGN KEY (`ma_nguyen_lieu`) REFERENCES `nguyen_lieu` (`ma_nguyen_lieu`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `chi_tiet_xuat_kho`;
+CREATE TABLE `chi_tiet_xuat_kho` (
+  `ma_chi_tiet` int(11) NOT NULL AUTO_INCREMENT,
+  `ma_xuat_kho` int(11) NOT NULL,
+  `ma_nguyen_lieu` int(11) NOT NULL,
+  `so_luong` decimal(10,2) NOT NULL,
+  PRIMARY KEY (`ma_chi_tiet`),
+  KEY `fk_ctxk_xuatkho` (`ma_xuat_kho`),
+  KEY `fk_ctxk_nguyenlieu` (`ma_nguyen_lieu`),
+  CONSTRAINT `fk_ctxk_nguyenlieu` FOREIGN KEY (`ma_nguyen_lieu`) REFERENCES `nguyen_lieu` (`ma_nguyen_lieu`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ctxk_xuatkho` FOREIGN KEY (`ma_xuat_kho`) REFERENCES `lich_su_xuat_kho` (`ma_xuat_kho`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `cong_thuc_mon_an`;
+CREATE TABLE `cong_thuc_mon_an` (
+  `ma_mon_an` int(11) NOT NULL,
+  `ma_nguyen_lieu` int(11) NOT NULL,
+  `so_luong_can` decimal(10,2) NOT NULL,
+  PRIMARY KEY (`ma_mon_an`,`ma_nguyen_lieu`),
+  KEY `ma_nguyen_lieu` (`ma_nguyen_lieu`),
+  CONSTRAINT `cong_thuc_mon_an_ibfk_1` FOREIGN KEY (`ma_mon_an`) REFERENCES `mon_an` (`ma_mon_an`) ON DELETE CASCADE,
+  CONSTRAINT `cong_thuc_mon_an_ibfk_2` FOREIGN KEY (`ma_nguyen_lieu`) REFERENCES `nguyen_lieu` (`ma_nguyen_lieu`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
--- Bảng `gio_hang`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `gio_hang` (
+DROP TABLE IF EXISTS `danh_muc`;
+CREATE TABLE `danh_muc` (
+  `ma_danh_muc` int(11) NOT NULL AUTO_INCREMENT,
+  `ten_danh_muc` varchar(255) NOT NULL,
+  `mo_ta` text DEFAULT NULL,
+  `hinh_anh` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`ma_danh_muc`)
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `dia_chi_nguoi_dung`;
+CREATE TABLE `dia_chi_nguoi_dung` (
+  `ma_dia_chi` int(11) NOT NULL AUTO_INCREMENT,
+  `ma_nguoi_dung` int(11) NOT NULL,
+  `ten_goi_nho` varchar(100) DEFAULT 'Địa chỉ của tôi',
+  `dia_chi_chi_tiet` text NOT NULL,
+  `kinh_do` decimal(10,8) DEFAULT NULL,
+  `vi_do` decimal(11,8) DEFAULT NULL,
+  `la_mac_dinh` tinyint(1) DEFAULT 0,
+  `ngay_tao` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`ma_dia_chi`),
+  KEY `ma_nguoi_dung` (`ma_nguoi_dung`),
+  CONSTRAINT `dia_chi_nguoi_dung_ibfk_1` FOREIGN KEY (`ma_nguoi_dung`) REFERENCES `nguoi_dung` (`ma_nguoi_dung`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `don_hang`;
+CREATE TABLE `don_hang` (
+  `ma_don_hang` int(11) NOT NULL AUTO_INCREMENT,
+  `ma_nguoi_dung` int(11) DEFAULT NULL,
+  `tong_tien` decimal(10,2) NOT NULL,
+  `trang_thai` enum('cho_duyet','dang_che_bien','dang_giao','hoan_thanh','da_huy') NOT NULL DEFAULT 'cho_duyet',
+  `dia_chi_giao_hang` text NOT NULL,
+  `kinh_do` decimal(10,8) DEFAULT NULL,
+  `vi_do` decimal(11,8) DEFAULT NULL,
+  `so_dien_thoai_giao` varchar(20) NOT NULL,
+  `ngay_dat` datetime DEFAULT current_timestamp(),
+  `ghi_chu` text DEFAULT NULL,
+  `phuong_thuc_thanh_toan` enum('tien_mat','the','momo') DEFAULT 'tien_mat',
+  `ho_ten_nguoi_nhan` varchar(150) NOT NULL DEFAULT '',
+  `ma_giam_gia` varchar(50) DEFAULT NULL,
+  `so_tien_giam` decimal(10,2) DEFAULT 0.00,
+  PRIMARY KEY (`ma_don_hang`),
+  KEY `ma_nguoi_dung` (`ma_nguoi_dung`),
+  CONSTRAINT `don_hang_ibfk_1` FOREIGN KEY (`ma_nguoi_dung`) REFERENCES `nguoi_dung` (`ma_nguoi_dung`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `gio_hang`;
+CREATE TABLE `gio_hang` (
   `ma_nguoi_dung` int(11) NOT NULL,
   `ma_mon_an` int(11) NOT NULL,
   `so_luong` int(11) NOT NULL DEFAULT 1,
   PRIMARY KEY (`ma_nguoi_dung`,`ma_mon_an`),
-  KEY `ma_mon_an` (`ma_mon_an`)
+  KEY `ma_mon_an` (`ma_mon_an`),
+  CONSTRAINT `gio_hang_ibfk_1` FOREIGN KEY (`ma_nguoi_dung`) REFERENCES `nguoi_dung` (`ma_nguoi_dung`) ON DELETE CASCADE,
+  CONSTRAINT `gio_hang_ibfk_2` FOREIGN KEY (`ma_mon_an`) REFERENCES `mon_an` (`ma_mon_an`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
--- Bảng `danh_gia`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `danh_gia` (
-  `ma_danh_gia` int(11) NOT NULL AUTO_INCREMENT,
-  `ma_nguoi_dung` int(11) NOT NULL,
-  `ma_mon_an` int(11) NOT NULL,
-  `so_sao` tinyint(1) NOT NULL CHECK (`so_sao` between 1 and 5),
-  `noi_dung` text DEFAULT NULL,
-  `ngay_danh_gia` datetime DEFAULT current_timestamp(),
-  PRIMARY KEY (`ma_danh_gia`),
-  KEY `ma_nguoi_dung` (`ma_nguoi_dung`),
-  KEY `ma_mon_an` (`ma_mon_an`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+DROP TABLE IF EXISTS `lich_su_nhap_kho`;
+CREATE TABLE `lich_su_nhap_kho` (
+  `ma_nhap_kho` int(11) NOT NULL AUTO_INCREMENT,
+  `ngay_nhap` datetime DEFAULT current_timestamp(),
+  `nguoi_nhap` varchar(255) DEFAULT NULL,
+  `tong_tien` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `ghi_chu` text DEFAULT NULL,
+  PRIMARY KEY (`ma_nhap_kho`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
--- Bảng `ma_giam_gia` (cấu trúc đúng — dùng ma_code, phan_tram_giam, so_luong)
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `ma_giam_gia` (
+DROP TABLE IF EXISTS `lich_su_xuat_kho`;
+CREATE TABLE `lich_su_xuat_kho` (
+  `ma_xuat_kho` int(11) NOT NULL AUTO_INCREMENT,
+  `ngay_xuat` datetime DEFAULT current_timestamp(),
+  `nguoi_xuat` varchar(255) DEFAULT NULL,
+  `ghi_chu` text DEFAULT NULL,
+  PRIMARY KEY (`ma_xuat_kho`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `ma_giam_gia`;
+CREATE TABLE `ma_giam_gia` (
   `ma_code` varchar(50) NOT NULL,
   `phan_tram_giam` int(11) NOT NULL DEFAULT 0,
   `giam_toi_da` decimal(10,2) NOT NULL DEFAULT 0.00,
@@ -131,109 +140,50 @@ CREATE TABLE IF NOT EXISTS `ma_giam_gia` (
   PRIMARY KEY (`ma_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
--- Bảng `mon_yeu_thich`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mon_yeu_thich` (
-  `ma_nguoi_dung` int(11) NOT NULL,
-  `ma_mon_an` int(11) NOT NULL,
-  `ngay_them` datetime DEFAULT current_timestamp(),
-  PRIMARY KEY (`ma_nguoi_dung`,`ma_mon_an`),
-  KEY `fk_yeuthich_monan` (`ma_mon_an`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+DROP TABLE IF EXISTS `mon_an`;
+CREATE TABLE `mon_an` (
+  `ma_mon_an` int(11) NOT NULL AUTO_INCREMENT,
+  `ten_mon` varchar(255) NOT NULL,
+  `mo_ta` text DEFAULT NULL,
+  `gia_ban` decimal(10,2) NOT NULL,
+  `hinh_anh` varchar(255) DEFAULT NULL,
+  `ma_danh_muc` int(11) DEFAULT NULL,
+  `trang_thai` enum('con_hang','het_hang') NOT NULL DEFAULT 'con_hang',
+  PRIMARY KEY (`ma_mon_an`),
+  KEY `ma_danh_muc` (`ma_danh_muc`),
+  CONSTRAINT `mon_an_ibfk_1` FOREIGN KEY (`ma_danh_muc`) REFERENCES `danh_muc` (`ma_danh_muc`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
--- Bảng `nguyen_lieu`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `nguyen_lieu` (
-  `ma_nguyen_lieu` INT AUTO_INCREMENT PRIMARY KEY,
-  `ten_nguyen_lieu` VARCHAR(255) NOT NULL,
-  `don_vi_tinh` VARCHAR(50) NOT NULL,
-  `so_luong_ton` DECIMAL(10,2) NOT NULL DEFAULT 0,
-  `gia_nhap_gan_nhat` DECIMAL(10,2) NOT NULL DEFAULT 0,
-  `trang_thai` ENUM('hoat_dong','ngung_su_dung') NOT NULL DEFAULT 'hoat_dong'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+DROP TABLE IF EXISTS `nguoi_dung`;
+CREATE TABLE `nguoi_dung` (
+  `ma_nguoi_dung` int(11) NOT NULL AUTO_INCREMENT,
+  `ho_ten` varchar(255) NOT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `mat_khau` varchar(255) NOT NULL,
+  `so_dien_thoai` varchar(20) DEFAULT NULL,
+  `dia_chi` text DEFAULT NULL,
+  `hinh_anh` longtext DEFAULT NULL,
+  `vai_tro` enum('khach_hang','nhan_vien','quan_tri') NOT NULL DEFAULT 'khach_hang',
+  `token_quen_mat_khau` varchar(255) DEFAULT NULL,
+  `han_token` datetime DEFAULT NULL,
+  `ngay_tao` datetime DEFAULT current_timestamp(),
+  `trang_thai` enum('hoat_dong','bi_khoa','bi_cam') NOT NULL DEFAULT 'hoat_dong',
+  `khoa_den_ngay` datetime DEFAULT NULL,
+  PRIMARY KEY (`ma_nguoi_dung`),
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `email_2` (`email`),
+  UNIQUE KEY `uk_sdt` (`so_dien_thoai`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
--- Bảng `lich_su_nhap_kho`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `lich_su_nhap_kho` (
-  `ma_nhap_kho` INT AUTO_INCREMENT PRIMARY KEY,
-  `ngay_nhap` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `nguoi_nhap` VARCHAR(255),
-  `tong_tien` DECIMAL(10,2) NOT NULL DEFAULT 0,
-  `ghi_chu` TEXT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+DROP TABLE IF EXISTS `nguyen_lieu`;
+CREATE TABLE `nguyen_lieu` (
+  `ma_nguyen_lieu` int(11) NOT NULL AUTO_INCREMENT,
+  `ten_nguyen_lieu` varchar(255) NOT NULL,
+  `don_vi_tinh` varchar(50) NOT NULL,
+  `so_luong_ton` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `gia_nhap_gan_nhat` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `trang_thai` enum('hoat_dong','ngung_su_dung') NOT NULL DEFAULT 'hoat_dong',
+  PRIMARY KEY (`ma_nguyen_lieu`)
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
--- Bảng `chi_tiet_nhap_kho`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `chi_tiet_nhap_kho` (
-  `ma_chi_tiet` INT AUTO_INCREMENT PRIMARY KEY,
-  `ma_nhap_kho` INT NOT NULL,
-  `ma_nguyen_lieu` INT NOT NULL,
-  `so_luong` DECIMAL(10,2) NOT NULL,
-  `don_gia` DECIMAL(10,2) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
--- Bảng `cong_thuc_mon_an`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `cong_thuc_mon_an` (
-  `ma_mon_an` INT NOT NULL,
-  `ma_nguyen_lieu` INT NOT NULL,
-  `so_luong_can` DECIMAL(10,2) NOT NULL,
-  PRIMARY KEY (`ma_mon_an`, `ma_nguyen_lieu`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
--- Bảng `chi_tiet_thanh_toan`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `chi_tiet_thanh_toan` (
-  `ma_thanh_toan` int(11) NOT NULL AUTO_INCREMENT,
-  `ma_don_hang` int(11) NOT NULL,
-  `ma_giao_dich_doi_tac` varchar(255) DEFAULT NULL,
-  `so_tien` decimal(10,2) NOT NULL,
-  `ngay_thanh_toan` datetime DEFAULT current_timestamp(),
-  `ket_qua` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`ma_thanh_toan`),
-  KEY `ma_don_hang` (`ma_don_hang`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
--- Ràng buộc (Foreign Keys)
--- --------------------------------------------------------
-ALTER TABLE `mon_an`
-  ADD CONSTRAINT `mon_an_ibfk_1` FOREIGN KEY (`ma_danh_muc`) REFERENCES `danh_muc` (`ma_danh_muc`) ON DELETE SET NULL;
-
-ALTER TABLE `don_hang`
-  ADD CONSTRAINT `don_hang_ibfk_1` FOREIGN KEY (`ma_nguoi_dung`) REFERENCES `nguoi_dung` (`ma_nguoi_dung`) ON DELETE SET NULL;
-
-ALTER TABLE `chi_tiet_don_hang`
-  ADD CONSTRAINT `chi_tiet_don_hang_ibfk_1` FOREIGN KEY (`ma_don_hang`) REFERENCES `don_hang` (`ma_don_hang`) ON DELETE CASCADE,
-  ADD CONSTRAINT `chi_tiet_don_hang_ibfk_2` FOREIGN KEY (`ma_mon_an`) REFERENCES `mon_an` (`ma_mon_an`) ON DELETE CASCADE;
-
-ALTER TABLE `chi_tiet_thanh_toan`
-  ADD CONSTRAINT `fk_thanhtoan_donhang` FOREIGN KEY (`ma_don_hang`) REFERENCES `don_hang` (`ma_don_hang`) ON DELETE CASCADE;
-
-ALTER TABLE `danh_gia`
-  ADD CONSTRAINT `fk_danhgia_monan` FOREIGN KEY (`ma_mon_an`) REFERENCES `mon_an` (`ma_mon_an`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_danhgia_nguoidung` FOREIGN KEY (`ma_nguoi_dung`) REFERENCES `nguoi_dung` (`ma_nguoi_dung`) ON DELETE CASCADE;
-
-ALTER TABLE `gio_hang`
-  ADD CONSTRAINT `gio_hang_ibfk_1` FOREIGN KEY (`ma_nguoi_dung`) REFERENCES `nguoi_dung` (`ma_nguoi_dung`) ON DELETE CASCADE,
-  ADD CONSTRAINT `gio_hang_ibfk_2` FOREIGN KEY (`ma_mon_an`) REFERENCES `mon_an` (`ma_mon_an`) ON DELETE CASCADE;
-
-ALTER TABLE `mon_yeu_thich`
-  ADD CONSTRAINT `fk_yeuthich_monan` FOREIGN KEY (`ma_mon_an`) REFERENCES `mon_an` (`ma_mon_an`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_yeuthich_nguoidung` FOREIGN KEY (`ma_nguoi_dung`) REFERENCES `nguoi_dung` (`ma_nguoi_dung`) ON DELETE CASCADE;
-
-ALTER TABLE `chi_tiet_nhap_kho`
-  ADD CONSTRAINT `fk_ctnk_nhapkho` FOREIGN KEY (`ma_nhap_kho`) REFERENCES `lich_su_nhap_kho` (`ma_nhap_kho`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_ctnk_nguyenlieu` FOREIGN KEY (`ma_nguyen_lieu`) REFERENCES `nguyen_lieu` (`ma_nguyen_lieu`) ON DELETE CASCADE;
-
-ALTER TABLE `cong_thuc_mon_an`
-  ADD CONSTRAINT `fk_ctma_monan` FOREIGN KEY (`ma_mon_an`) REFERENCES `mon_an` (`ma_mon_an`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_ctma_nguyenlieu` FOREIGN KEY (`ma_nguyen_lieu`) REFERENCES `nguyen_lieu` (`ma_nguyen_lieu`) ON DELETE CASCADE;
-
-COMMIT;
+SET FOREIGN_KEY_CHECKS = 1;

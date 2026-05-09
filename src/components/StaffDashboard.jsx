@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './admin/admin.css';
 import './StaffDashboard.css';
 import { API_BASE_URL } from '../apiConfig';
+import { useAuth } from '../contexts/AuthContext';
 
 const POLLING_INTERVAL = 5000;
 
@@ -128,10 +129,12 @@ const OrderCard = ({ order, onStatusChange, onPrint }) => {
       </div>
       <div className="order-card-body">
         <div className="order-customer">
-          <div className="order-avatar">{(order.ho_ten_nguoi_nhan||order.ten_khach||'K')[0].toUpperCase()}</div>
           <div className="order-customer-info">
-            <div className="order-customer-name">{order.ho_ten_nguoi_nhan||order.ten_khach||'Khách lẻ'} <span className="payment-badge">{PAY_LABEL[order.phuong_thuc_thanh_toan]||order.phuong_thuc_thanh_toan}</span></div>
-            <div className="order-customer-phone">{order.so_dien_thoai_giao}</div>
+            <div className="order-customer-name">
+              <strong>{order.ho_ten_nguoi_nhan||order.ten_khach||'Khách lẻ'}</strong>
+              <span className="payment-badge">{PAY_LABEL[order.phuong_thuc_thanh_toan]||order.phuong_thuc_thanh_toan}</span>
+            </div>
+            <div className="order-customer-phone">📞 {order.so_dien_thoai_giao}</div>
             <div className="order-address">📍 {order.dia_chi_giao_hang}</div>
           </div>
         </div>
@@ -220,6 +223,7 @@ const InventoryTab = ({ token, showToast }) => {
 
 // ── MAIN ───────────────────────────────────────────────────
 const StaffDashboard = ({ user, onNavigateHome }) => {
+  const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState([]);
   const [filterStatus, setFilterStatus] = useState('tat_ca');
@@ -315,7 +319,7 @@ const StaffDashboard = ({ user, onNavigateHome }) => {
     finally { setEmailSending(false); }
   };
 
-  const stats = Object.keys(STATUS_CFG).reduce((a,k)=>({...a,[k]:orders.filter(o=>o.trang_thai===k).length}),{});
+  const stats = shiftStats || {};
   const pendingCount = (stats.cho_duyet||0)+(stats.dang_che_bien||0);
 
   const NAV_ITEMS = [
@@ -348,6 +352,10 @@ const StaffDashboard = ({ user, onNavigateHome }) => {
         </nav>
 
         <div className="sidebar-footer">
+          <button className="sidebar-nav-item logout-btn" onClick={logout} title="Đăng xuất">
+            <span className="nav-icon">🚪</span>
+            {sidebarOpen && <span className="nav-label">Đăng xuất</span>}
+          </button>
           <button className="sidebar-nav-item" onClick={onNavigateHome} title="Về trang chủ">
             <span className="nav-icon">🏠</span>
             {sidebarOpen && <span className="nav-label">Trang chủ</span>}

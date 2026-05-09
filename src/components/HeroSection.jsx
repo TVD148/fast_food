@@ -1,106 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import heroBurgerImg from '../assets/images/hero-burger.png';
-import comboGaRanImg from '../assets/images/combo-ga-ran.png';
-import comboMiYImg from '../assets/images/combo-mi-y.png';
-
-const getTomorrowMidnight = () => {
-  const d = new Date();
-  d.setHours(24, 0, 0, 0);
-  return d;
-};
-const getDaysFromNow = (days) => {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  d.setHours(23, 59, 59, 0);
-  return d;
-};
-
-const slides = [
-  {
-    type: 'hero',
-    img: heroBurgerImg,
-    title: <>Sự Lựa Chọn Hàng Đầu <br /> Cho Bữa Ăn <span className="text-green">Nhanh & Ngon!</span></>,
-    desc: 'Chúng tôi mang đến những món ăn được chế biến từ nguyên liệu tươi ngon nhất, phục vụ nhanh chóng, mang lại trải nghiệm tuyệt vời cho bạn và gia đình...',
-    btnText: 'Đặt Hàng Ngay \u2192',
-    actionId: 'mat-hang-hot'
-  },
-  {
-    type: 'deal',
-    img: 'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=800&h=600&fit=crop',
-    title: 'Combo Siêu Ưu Đãi',
-    desc: 'Burger + Khoai + Nước + Tráng miệng',
-    price: 120000,
-    originalPrice: 150000,
-    btnText: 'Đặt ngay',
-    actionId: 'thuc-don',
-    holidayName: '⚡ Flash Sale Giờ Vàng',
-    endTime: getTomorrowMidnight()
-  },
-  {
-    type: 'deal',
-    img: comboGaRanImg,
-    title: 'Combo Gà Giòn Đam Mê',
-    desc: '3 Miếng Gà Rán + 1 Khoai Chiên + 2 Nước Ngọt',
-    price: 99000,
-    originalPrice: 135000,
-    btnText: 'Đặt ngay',
-    actionId: 'thuc-don',
-    holidayName: '🎉 Mừng Lễ Lớn 30/4',
-    endTime: getDaysFromNow(3)
-  },
-  {
-    type: 'deal',
-    img: comboMiYImg,
-    title: 'Combo Cặp Đôi Kiểu Ý',
-    desc: '2 Mì Ý Hải Sản + 1 Salad + 2 Trà Chanh',
-    price: 150000,
-    originalPrice: 190000,
-    btnText: 'Đặt ngay',
-    actionId: 'thuc-don',
-    holidayName: '🔥 Ưu Đãi Cuối Tuần',
-    endTime: getDaysFromNow(1)
-  }
-];
 
 const HeroSection = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [timeLeft, setTimeLeft] = useState({});
+  const heroContent = {
+    img: heroBurgerImg,
+    title: <>Sự Lựa Chọn Hàng Đầu <br /> Cho Bữa Ăn <span className="text-green">Nhanh & Ngon!</span></>,
+    desc: 'Chúng tôi mang đến những món ăn được chế biến từ nguyên liệu tươi ngon nhất, phục vụ nhanh chóng, mang lại trải nghiệm tuyệt vời cho bạn và gia đình. Chất lượng hàng đầu, hương vị khó quên.',
+    btnText: 'Đặt Hàng Ngay \u2192',
+    actionId: 'mat-hang-hot'
+  };
 
-  useEffect(() => {
-    const calculateTimeLeft = () => {
-      const differences = {};
-      slides.forEach((slide, index) => {
-        if (slide.endTime) {
-          const difference = +slide.endTime - +new Date();
-          if (difference > 0) {
-            differences[index] = {
-              days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-              hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-              minutes: Math.floor((difference / 1000 / 60) % 60),
-              seconds: Math.floor((difference / 1000) % 60),
-            };
-          } else {
-            differences[index] = { days: 0, hours: 0, minutes: 0, seconds: 0 };
-          }
-        }
-      });
-      setTimeLeft(differences);
-    };
-
-    calculateTimeLeft();
-    const timer = setInterval(calculateTimeLeft, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % slides.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [currentIndex]);
-
-  const handlePrev = () => setCurrentIndex((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
-  const handleNext = () => setCurrentIndex((prev) => (prev + 1) % slides.length);
+  const handleAction = () => {
+    const elem = document.getElementById(heroContent.actionId);
+    if (elem) {
+      const headerOffset = 80;
+      const elementPosition = elem.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.scrollY - headerOffset;
+      window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+    }
+  };
 
   return (
     <section className="bg-dark-custom text-white pt-5 pb-5 overflow-hidden">
@@ -108,113 +26,55 @@ const HeroSection = () => {
         <div className="row align-items-center">
           
           {/* Cột chữ (Trái) */}
-          <div className="col-md-6 pe-md-5 banner-text-container position-relative" style={{ minHeight: '650px' }}>
-            <div key={currentIndex} className="fade-in" style={{ paddingBottom: '150px' }}>
-              {slides[currentIndex].type === 'hero' ? (
-                <>
-                  <h1 className="font-serif fw-bold mb-4" style={{fontSize: '3.5rem', lineHeight: '1.2'}}>
-                    {slides[currentIndex].title}
-                  </h1>
-                  <p className="text-secondary mb-5 fs-6" style={{maxWidth: '450px', minHeight: '80px'}}>
-                    {slides[currentIndex].desc}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div style={{ minHeight: '40px' }}>
-                    {slides[currentIndex].holidayName && (
-                      <div className="d-inline-flex align-items-center gap-2 mb-3 p-2 px-3 rounded-pill shadow-sm" style={{ background: 'linear-gradient(45deg, #ff416c, #ff4b2b)' }}>
-                        <span className="text-white fw-bold" style={{ fontSize: '0.85rem', letterSpacing: '0.5px' }}>{slides[currentIndex].holidayName}</span>
-                      </div>
-                    )}
-                  </div>
-                  <h1 className="font-serif fw-bold mb-3" style={{fontSize: '3.5rem', lineHeight: '1.2', color: '#ffc107'}}>
-                    {slides[currentIndex].title}
-                  </h1>
-                  <p className="text-light mb-4 fs-5" style={{maxWidth: '450px', minHeight: '80px'}}>
-                    {slides[currentIndex].desc}
-                  </p>
-
-                  <div style={{ minHeight: '65px' }}>
-                    {timeLeft[currentIndex] && (
-                      <div className="d-flex align-items-center mb-4 bg-dark bg-opacity-50 p-2 rounded" style={{ maxWidth: 'fit-content' }}>
-                        <span className="me-3 text-white-50 ms-2" style={{fontSize: '0.9rem'}}><i className="bi bi-clock-history me-1"></i> Kết thúc sau:</span>
-                        <div className="d-flex gap-2">
-                          {timeLeft[currentIndex].days > 0 && (
-                            <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
-                              <span className="d-block fw-bold fs-5 lh-1 text-danger">{String(timeLeft[currentIndex].days).padStart(2, '0')}</span>
-                              <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>NGÀY</small>
-                            </div>
-                          )}
-                          <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
-                            <span className="d-block fw-bold fs-5 lh-1 text-white">{String(timeLeft[currentIndex].hours).padStart(2, '0')}</span>
-                            <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>GIỜ</small>
-                          </div>
-                          <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
-                            <span className="d-block fw-bold fs-5 lh-1 text-white">{String(timeLeft[currentIndex].minutes).padStart(2, '0')}</span>
-                            <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>PHÚT</small>
-                          </div>
-                          <div className="bg-dark text-white rounded p-2 text-center shadow-sm" style={{ minWidth: '45px', border: '1px solid #444' }}>
-                            <span className="d-block fw-bold fs-5 lh-1 text-warning">{String(timeLeft[currentIndex].seconds).padStart(2, '0')}</span>
-                            <small className="text-secondary fw-bold" style={{ fontSize: '0.55rem' }}>GIÂY</small>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mb-4 d-flex align-items-end" style={{ minHeight: '40px' }}>
-                    <span className="fs-2 fw-bold text-danger me-3 lh-1">{slides[currentIndex].price.toLocaleString()}₫</span>
-                    <span className="text-secondary text-decoration-line-through me-3 mb-1">{slides[currentIndex].originalPrice.toLocaleString()}₫</span>
-                    <span className="badge bg-success fs-6 mb-1 px-2 py-1">- {Math.round(((slides[currentIndex].originalPrice - slides[currentIndex].price) / slides[currentIndex].originalPrice) * 100)}%</span>
-                  </div>
-                </>
-              )}
-              <button className="btn btn-yellow mb-5" onClick={() => {
-                const elem = document.getElementById(slides[currentIndex].actionId);
-                if (elem) {
-                  const headerOffset = 80;
-                  const elementPosition = elem.getBoundingClientRect().top;
-                  const offsetPosition = elementPosition + window.scrollY - headerOffset;
-                  window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
-                }
-              }}>{slides[currentIndex].btnText}</button>
-            </div>
-            
-            {/* Slider Nav - Fixed Position within container */}
-            <div className="d-flex align-items-center gap-3 position-absolute" style={{ bottom: '40px', left: '0', zIndex: 10 }}>
-              <span className="fw-bold ms-3" style={{ width: '30px', display: 'inline-block', textAlign: 'center' }}>{`0${currentIndex + 1}`}</span>
-              <div style={{ width: '80px', height: '2px', backgroundColor: 'rgba(255,255,255,0.2)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ width: `${((currentIndex + 1) / slides.length) * 100}%`, height: '100%', backgroundColor: '#ffc107', transition: 'width 0.4s ease-in-out', position: 'absolute', top: 0, left: 0 }}></div>
-              </div>
-              <span className="text-secondary fw-bold" style={{ width: '30px', display: 'inline-block', textAlign: 'center' }}>{`0${slides.length}`}</span>
-              <div className="d-flex gap-2 ms-2">
-                <button className="btn btn-outline-secondary rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }} onClick={handlePrev}><i className="bi bi-arrow-left"></i></button>
-                <button className="btn btn-warning rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }} onClick={handleNext}><i className="bi bi-arrow-right"></i></button>
-              </div>
+          <div className="col-md-6 pe-md-5" data-aos="fade-right">
+            <h1 className="font-serif fw-bold mb-4" style={{fontSize: '3.8rem', lineHeight: '1.2'}}>
+              {heroContent.title}
+            </h1>
+            <p className="text-secondary mb-5 fs-5" style={{maxWidth: '500px', lineHeight: '1.7'}}>
+              {heroContent.desc}
+            </p>
+            <div className="d-flex gap-3 align-items-center">
+                <button className="btn btn-yellow btn-lg px-5 py-3 fw-bold shadow-lg" onClick={handleAction}>
+                    {heroContent.btnText}
+                </button>
             </div>
           </div>
 
           {/* Cột ảnh (Phải) */}
-          <div className="col-md-6 text-center position-relative mt-5 mt-md-0 d-flex align-items-center justify-content-center" style={{height: '650px'}}>
-             {/* Mũi tên xanh lá chỉ vào burger */}
-             <div className="position-absolute top-50 start-0 translate-middle-y d-none d-md-block" style={{zIndex: 2}}>
-                <i className="bi bi-arrow-90deg-right text-green" style={{fontSize: '4rem', opacity: '0.8'}}></i>
+          <div className="col-md-6 text-center position-relative mt-5 mt-md-0 d-flex align-items-center justify-content-center" style={{minHeight: '550px'}} data-aos="fade-left">
+             {/* Mũi tên xanh lá */}
+             <div className="position-absolute top-50 start-0 translate-middle-y d-none d-lg-block" style={{zIndex: 2, marginLeft: '-30px'}}>
+                <i className="bi bi-arrow-90deg-right text-green" style={{fontSize: '4.5rem', opacity: '0.6'}}></i>
              </div>
-             <div key={currentIndex} className="fade-in w-100 h-100 d-flex align-items-center justify-content-center">
+             
+             {/* Vòng tròn trang trí phía sau */}
+             <div className="position-absolute rounded-circle bg-yellow bg-opacity-10" style={{width: '500px', height: '500px', filter: 'blur(80px)', zIndex: 0}}></div>
+             
+             <div className="w-100 h-100 d-flex align-items-center justify-content-center position-relative" style={{zIndex: 1}}>
                <img 
-                 src={slides[currentIndex].img} 
-                 alt={typeof slides[currentIndex].title === 'string' ? slides[currentIndex].title : `Slide ${currentIndex + 1}`} 
-                 className="img-fluid drop-shadow" 
+                 src={heroContent.img} 
+                 alt="Hero Burger" 
+                 className="img-fluid drop-shadow floating-animation" 
                  style={{
                    maxWidth: '100%', 
-                   maxHeight: '450px',
-                   filter: 'drop-shadow(0px 20px 30px rgba(0,0,0,0.5))', 
-                   transition: 'all 0.5s ease-in-out', 
+                   maxHeight: '500px',
+                   filter: 'drop-shadow(0px 30px 40px rgba(0,0,0,0.6))', 
                    objectFit: 'contain', 
-                   borderRadius: '20px'
                  }} 
                />
+               
+               {/* Badge trang trí */}
+               <div className="position-absolute top-0 end-0 bg-white text-dark p-3 rounded-4 shadow-lg d-none d-md-block" style={{marginTop: '50px', transform: 'rotate(10deg)'}}>
+                    <div className="d-flex align-items-center gap-2">
+                        <div className="bg-green p-2 rounded-circle">
+                            <i className="bi bi-lightning-fill text-white"></i>
+                        </div>
+                        <div>
+                            <p className="fw-bold mb-0 small">Giao cực nhanh</p>
+                            <p className="small text-muted mb-0" style={{fontSize: '0.7rem'}}>Chỉ từ 15-30 phút</p>
+                        </div>
+                    </div>
+               </div>
              </div>
           </div>
 

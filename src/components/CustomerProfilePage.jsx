@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../apiConfig';
 import MapPickerModal from './MapPickerModal';
+import { useCart } from '../contexts/CartContext';
 
 const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
   const { currentUser, updateUser } = useAuth();
+  const { addToCart, toggleCart } = useCart();
   const [activeTab, setActiveTab] = useState(initialTab);
   
   // States
-  const [name, setName] = useState('');
+  const [hoDem, setHoDem] = useState('');
+  const [ten, setTen] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -26,6 +29,11 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setMessage({ text: 'Ảnh đại diện quá lớn! Vui lòng chọn ảnh dưới 2MB.', type: 'error' });
+        e.target.value = '';
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         const img = new Image();
@@ -77,7 +85,15 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
 
   useEffect(() => {
     if (currentUser) {
-      setName(currentUser.name || currentUser.ho_ten || '');
+      const fullName = currentUser.name || currentUser.ho_ten || '';
+      const parts = fullName.trim().split(' ');
+      if (parts.length > 1) {
+        setTen(parts.pop());
+        setHoDem(parts.join(' '));
+      } else {
+        setTen(fullName);
+        setHoDem('');
+      }
       setEmail(currentUser.email || '');
       setPhone(currentUser.phone || currentUser.so_dien_thoai || '');
       setAvatar(currentUser.hinh_anh || currentUser.avatar || null);
@@ -163,27 +179,53 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     try {
       const { address: addr, lat, lng } = locationData;
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/dia-chi`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({ 
-          ten_goi_nho: 'Địa chỉ mới', 
-          dia_chi_chi_tiet: addr,
-          kinh_do: lng, // Backend uses kinh_do (longitude), vi_do (latitude)
-          vi_do: lat,
-          la_mac_dinh: addresses.length === 0
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        fetchAddresses();
-        setMessage({ text: 'Đã thêm địa chỉ mới!', type: 'success' });
+      
+      if (editingAddress) {
+        // Cập nhật địa chỉ cũ
+        const res = await fetch(`${API_BASE_URL}/dia-chi/${editingAddress.ma_dia_chi}`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ 
+            ten_goi_nho: editingAddress.ten_goi_nho, 
+            dia_chi_chi_tiet: addr,
+            kinh_do: lng,
+            vi_do: lat
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          fetchAddresses();
+          setMessage({ text: 'Đã cập nhật địa chỉ!', type: 'success' });
+        }
+      } else {
+        // Thêm mới
+        const res = await fetch(`${API_BASE_URL}/dia-chi`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ 
+            ten_goi_nho: 'Địa chỉ mới', 
+            dia_chi_chi_tiet: addr,
+            kinh_do: lng, 
+            vi_do: lat,
+            la_mac_dinh: addresses.length === 0
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          fetchAddresses();
+          setMessage({ text: 'Đã thêm địa chỉ mới!', type: 'success' });
+        }
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setEditingAddress(null);
     }
   };
 
@@ -210,19 +252,37 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     }
   };
 
+  const handleReorder = async (order) => {
+    if (!order.chi_tiet) return;
+    
+    // Thêm từng món vào giỏ hàng
+    for (const item of order.chi_tiet) {
+      await addToCart({
+        id: item.ma_mon_an,
+        name: item.ten_mon,
+        price: Number(item.gia_luc_mua),
+        img: item.hinh_anh
+      }, item.so_luong);
+    }
+    
+    // Mở giỏ hàng sau khi thêm xong
+    toggleCart();
+  };
+
   // Removed reservations fetch logic
 
     const handleSaveInfo = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
+      const fullName = `${hoDem} ${ten}`.trim();
       const res = await fetch(`${API_BASE_URL}/auth/cap-nhat`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ho_ten: name, email, so_dien_thoai: phone, hinh_anh: avatar })
+        body: JSON.stringify({ ho_ten: fullName, email, so_dien_thoai: phone, hinh_anh: avatar })
       });
       
       const contentType = res.headers.get("content-type");
@@ -412,16 +472,30 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                   <div className="col-md-8">
                     <form onSubmit={handleSaveInfo}>
                       <div className="row g-4">
-                        <div className="col-12">
-                          <label className="form-label fw-semibold text-dark small">Họ và tên</label>
+                      <div className="row g-3">
+                        <div className="col-md-8">
+                          <label className="form-label fw-semibold text-dark small">Họ và tên đệm</label>
                           <input 
                             type="text" 
                             className="form-control bg-light" 
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            value={hoDem}
+                            onChange={(e) => setHoDem(e.target.value)}
+                            placeholder="Vinh"
                             required
                           />
                         </div>
+                        <div className="col-md-4">
+                          <label className="form-label fw-semibold text-dark small">Tên</label>
+                          <input 
+                            type="text" 
+                            className="form-control bg-light" 
+                            value={ten}
+                            onChange={(e) => setTen(e.target.value)}
+                            placeholder="Quang"
+                            required
+                          />
+                        </div>
+                      </div>
                         <div className="col-md-6">
                           <label className="form-label fw-semibold text-dark small">Số điện thoại</label>
                           <input 
@@ -518,6 +592,12 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                                     Đặt làm mặc định
                                   </button>
                                 )}
+                                <button className="btn btn-link p-0 text-decoration-none small text-info fw-bold" onClick={() => {
+                                  setEditingAddress(addr);
+                                  setIsMapOpen(true);
+                                }}>
+                                  Sửa
+                                </button>
                                 <button className="btn btn-link p-0 text-decoration-none small text-danger fw-bold" onClick={() => handleDeleteAddress(addr.ma_dia_chi)}>
                                   Xóa
                                 </button>
@@ -586,7 +666,15 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                             <tr className="bg-light">
                               <td colSpan="5">
                                 <div className="p-3 text-start">
-                                  <h6 className="fw-bold mb-3">Chi tiết đơn hàng #{order.ma_don_hang}</h6>
+                                  <div className="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 className="fw-bold mb-0">Chi tiết đơn hàng #{order.ma_don_hang}</h6>
+                                    <button 
+                                      className="btn btn-sm btn-yellow fw-bold rounded-pill px-3 shadow-sm"
+                                      onClick={() => handleReorder(order)}
+                                    >
+                                      <i className="bi bi-arrow-repeat me-1"></i> Mua lại đơn này
+                                    </button>
+                                  </div>
                                   {order.ma_giam_gia && (
                                     <p className="small text-success mb-2">Đã áp dụng mã: {order.ma_giam_gia} (Giảm {Number(order.so_tien_giam).toLocaleString('vi-VN')} đ)</p>
                                   )}
@@ -747,8 +835,13 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
       {/* Map Picker Modal */}
       <MapPickerModal 
         isOpen={isMapOpen} 
-        onClose={() => setIsMapOpen(false)} 
+        onClose={() => {
+          setIsMapOpen(false);
+          setEditingAddress(null);
+        }} 
         onConfirm={handleMapConfirm}
+        initialAddress={editingAddress?.dia_chi_chi_tiet}
+        initialPosition={editingAddress ? [editingAddress.vi_do, editingAddress.kinh_do] : null}
       />
     </div>
   );

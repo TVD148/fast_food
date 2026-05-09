@@ -303,7 +303,6 @@ export default function AdminDashboard({ onNavigate }) {
             <div className="recent-orders-card">
                 <div className="recent-header">
                     <h3 className="chart-title" style={{ margin: 0 }}>🛒 Đơn hàng gần nhất</h3>
-                    <button className="btn-see-all" onClick={() => onNavigate('orders')}>Xem tất cả →</button>
                 </div>
                 <div className="admin-table-wrap">
                     <table className="admin-table">

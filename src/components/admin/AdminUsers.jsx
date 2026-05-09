@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { API_BASE_URL } from '../../apiConfig';
+import { useAuth } from '../../contexts/AuthContext';
 import ConfirmDialog from './ConfirmDialog';
 
 const ROLE_MAP = {
@@ -15,6 +16,7 @@ const STATUS_MAP = {
 };
 
 export default function AdminUsers() {
+    const { currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -24,8 +26,8 @@ export default function AdminUsers() {
 
     // Dialog xóa
     const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, name: '' });
-    // Dialog khóa/ban
-    const [lockDialog, setLockDialog] = useState({ open: false, id: null, name: '', action: 'bi_khoa' });
+    // Dialog khóa/mở
+    const [lockDialog, setLockDialog] = useState({ open: false, id: null, name: '', action: 'bi_khoa', so_ngay: 1 });
 
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
@@ -72,19 +74,19 @@ export default function AdminUsers() {
         else showToast(data.message, 'error');
     };
 
-    // ─── Khóa / Ban / Mở khóa ───
+    // ─── Khóa / Mở khóa ───
     const openLockDialog = (id, name, action) => {
-        setLockDialog({ open: true, id, name, action });
+        setLockDialog({ open: true, id, name, action, so_ngay: action === 'hoat_dong' ? 0 : 1 });
     };
 
     const handleConfirmLock = async () => {
-        const { id, action } = lockDialog;
-        setLockDialog({ open: false, id: null, name: '', action: 'bi_khoa' });
+        const { id, action, so_ngay } = lockDialog;
+        setLockDialog({ open: false, id: null, name: '', action: 'bi_khoa', so_ngay: 1 });
         const token = localStorage.getItem('token');
         const res = await fetch(`${API_BASE_URL}/admin/nguoi-dung/${id}/trang-thai`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ trang_thai: action })
+            body: JSON.stringify({ trang_thai: action, so_ngay: parseInt(so_ngay) })
         });
         const data = await res.json();
         if (data.success) { showToast(data.message); fetchUsers(); }
@@ -142,16 +144,40 @@ export default function AdminUsers() {
                 onCancel={() => setDeleteDialog({ open: false, id: null, name: '' })}
             />
 
-            {/* Dialog khóa/ban/mở */}
+            {/* Dialog khóa/mở */}
             <ConfirmDialog
                 open={lockDialog.open}
                 title={lc.title}
                 icon={lc.icon}
-                message={<>Bạn có chắc muốn <strong>{lc.title.toLowerCase()}</strong> <strong>"{lockDialog.name}"</strong>?<br /><span style={{ color: lc.type === 'danger' ? '#ef4444' : lc.type === 'success' ? '#059669' : '#f59e0b' }}>{lc.desc}</span></>}
+                message={
+                    <div>
+                        Bạn có chắc muốn <strong>{lc.title.toLowerCase()}</strong> <strong>"{lockDialog.name}"</strong>?
+                        <br />
+                        <span style={{ color: lc.type === 'danger' ? '#ef4444' : lc.type === 'success' ? '#059669' : '#f59e0b' }}>{lc.desc}</span>
+                        
+                        {lockDialog.action === 'bi_khoa' && (
+                            <div style={{marginTop: '15px'}}>
+                                <label style={{display:'block', marginBottom:'5px', fontWeight:'bold'}}>Thời hạn khóa:</label>
+                                <select 
+                                    className="admin-select" 
+                                    style={{width:'100%'}}
+                                    value={lockDialog.so_ngay} 
+                                    onChange={e => setLockDialog({...lockDialog, so_ngay: e.target.value})}
+                                >
+                                    <option value="1">1 ngày</option>
+                                    <option value="3">3 ngày</option>
+                                    <option value="7">7 ngày</option>
+                                    <option value="30">30 ngày</option>
+                                    <option value="-1">Vĩnh viễn</option>
+                                </select>
+                            </div>
+                        )}
+                    </div>
+                }
                 confirmText={lc.confirmText}
                 type={lc.type}
                 onConfirm={handleConfirmLock}
-                onCancel={() => setLockDialog({ open: false, id: null, name: '', action: 'bi_khoa' })}
+                onCancel={() => setLockDialog({ open: false, id: null, name: '', action: 'bi_khoa', so_ngay: 1 })}
             />
 
             <div className="admin-section-header">
@@ -218,8 +244,9 @@ export default function AdminUsers() {
                                             <select
                                                 className="role-select"
                                                 value={u.vai_tro}
+                                                disabled={u.ma_nguoi_dung === currentUser?.id}
                                                 onChange={e => updateRole(u.ma_nguoi_dung, e.target.value)}
-                                                style={{ color: ROLE_MAP[u.vai_tro]?.color }}
+                                                style={{ color: ROLE_MAP[u.vai_tro]?.color, opacity: u.ma_nguoi_dung === currentUser?.id ? 0.6 : 1 }}
                                             >
                                                 <option value="khach_hang">👤 Khách hàng</option>
                                                 <option value="nhan_vien">🧑‍💼 Nhân viên</option>
@@ -229,42 +256,39 @@ export default function AdminUsers() {
                                         <td>
                                             <div className="action-row">
                                                 {/* Nút khóa / mở khóa */}
-                                                {status === 'hoat_dong' ? (
-                                                    <button
-                                                        className="btn-lock"
-                                                        title="Khóa tạm thời"
-                                                        onClick={() => openLockDialog(u.ma_nguoi_dung, u.ho_ten, 'bi_khoa')}
-                                                    >
-                                                        🔒 Khóa
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        className="btn-unlock"
-                                                        title="Mở khóa"
-                                                        onClick={() => openLockDialog(u.ma_nguoi_dung, u.ho_ten, 'hoat_dong')}
-                                                    >
-                                                        🔓 Mở
-                                                    </button>
-                                                )}
-
-                                                {/* Nút ban vĩnh viễn */}
-                                                {status !== 'bi_cam' && (
-                                                    <button
-                                                        className="btn-ban"
-                                                        title="Cấm vĩnh viễn"
-                                                        onClick={() => openLockDialog(u.ma_nguoi_dung, u.ho_ten, 'bi_cam')}
-                                                    >
-                                                        🚫 Ban
-                                                    </button>
+                                                {u.ma_nguoi_dung !== currentUser?.id && (
+                                                    status === 'hoat_dong' ? (
+                                                        <button
+                                                            className="btn-lock"
+                                                            title="Khóa tài khoản"
+                                                            onClick={() => openLockDialog(u.ma_nguoi_dung, u.ho_ten, 'bi_khoa')}
+                                                        >
+                                                            🔒 Khóa
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            className="btn-unlock"
+                                                            title="Mở khóa"
+                                                            onClick={() => openLockDialog(u.ma_nguoi_dung, u.ho_ten, 'hoat_dong')}
+                                                        >
+                                                            🔓 Mở
+                                                        </button>
+                                                    )
                                                 )}
 
                                                 {/* Nút xóa */}
-                                                <button
-                                                    className="btn-delete"
-                                                    onClick={() => setDeleteDialog({ open: true, id: u.ma_nguoi_dung, name: u.ho_ten })}
-                                                >
-                                                    🗑️ Xóa
-                                                </button>
+                                                {u.ma_nguoi_dung !== currentUser?.id && (
+                                                    <button
+                                                        className="btn-delete"
+                                                        onClick={() => setDeleteDialog({ open: true, id: u.ma_nguoi_dung, name: u.ho_ten })}
+                                                    >
+                                                        🗑️ Xóa
+                                                    </button>
+                                                )}
+                                                
+                                                {u.ma_nguoi_dung === currentUser?.id && (
+                                                    <span style={{color:'#888', fontSize:'0.9em', fontStyle:'italic'}}>Tài khoản đang dùng</span>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

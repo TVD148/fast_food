@@ -19,21 +19,36 @@ const layThongKeCa = async (req, res) => {
         const [[{ tongDonHomNay }]] = await db.query(
             `SELECT COUNT(*) AS tongDonHomNay FROM DON_HANG WHERE DATE(ngay_dat) = CURDATE()`
         );
-        const [[{ danhSachCho }]] = await db.query(
-            `SELECT COUNT(*) AS danhSachCho FROM DON_HANG WHERE trang_thai = 'cho_duyet'`
+        const [[{ cho_duyet }]] = await db.query(
+            `SELECT COUNT(*) AS cho_duyet FROM DON_HANG WHERE trang_thai = 'cho_duyet'`
         );
-        const [[{ dangCheB }]] = await db.query(
-            `SELECT COUNT(*) AS dangCheB FROM DON_HANG WHERE trang_thai = 'dang_che_bien'`
+        const [[{ dang_che_bien }]] = await db.query(
+            `SELECT COUNT(*) AS dang_che_bien FROM DON_HANG WHERE trang_thai = 'dang_che_bien'`
+        );
+        const [[{ dang_giao }]] = await db.query(
+            `SELECT COUNT(*) AS dang_giao FROM DON_HANG WHERE trang_thai = 'dang_giao'`
+        );
+        const [[{ hoan_thanh }]] = await db.query(
+            `SELECT COUNT(*) AS hoan_thanh FROM DON_HANG WHERE DATE(ngay_dat) = CURDATE() AND trang_thai = 'hoan_thanh'`
+        );
+        const [[{ da_huy }]] = await db.query(
+            `SELECT COUNT(*) AS da_huy FROM DON_HANG WHERE DATE(ngay_dat) = CURDATE() AND trang_thai = 'da_huy'`
         );
         const [[{ doanhThuCa }]] = await db.query(
             `SELECT COALESCE(SUM(tong_tien), 0) AS doanhThuCa FROM DON_HANG WHERE DATE(ngay_dat) = CURDATE() AND trang_thai = 'hoan_thanh'`
         );
-        const [[{ hoanThanhHom }]] = await db.query(
-            `SELECT COUNT(*) AS hoanThanhHom FROM DON_HANG WHERE DATE(ngay_dat) = CURDATE() AND trang_thai = 'hoan_thanh'`
-        );
+        
         res.json({
             success: true,
-            data: { tongDonHomNay, danhSachCho, dangCheB, doanhThuCa, hoanThanhHom }
+            data: { 
+                tongDonHomNay, 
+                cho_duyet, 
+                dang_che_bien, 
+                dang_giao, 
+                hoan_thanh, 
+                da_huy, 
+                doanhThuCa 
+            }
         });
     } catch (error) {
         console.error('Lỗi layThongKeCa:', error);

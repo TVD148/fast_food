@@ -8,6 +8,7 @@ export default function AdminInventory() {
     const [activeTab, setActiveTab] = useState('danh-sach'); // 'danh-sach', 'nhap-kho', 'lich-su'
     const [nguyenLieu, setNguyenLieu] = useState([]);
     const [lichSu, setLichSu] = useState([]);
+    const [lichSuXuat, setLichSuXuat] = useState([]);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState(null);
 
@@ -16,8 +17,9 @@ export default function AdminInventory() {
     const [editItem, setEditItem] = useState(null);
     const [formNL, setFormNL] = useState({ ten_nguyen_lieu: '', don_vi_tinh: '', trang_thai: 'hoat_dong' });
     
-    // Nhập kho state
+    // Nhập/Xuất kho state
     const [phieuNhap, setPhieuNhap] = useState([{ ma_nguyen_lieu: '', so_luong: '', don_gia: '' }]);
+    const [phieuXuat, setPhieuXuat] = useState([{ ma_nguyen_lieu: '', so_luong: '' }]);
     const [ghiChu, setGhiChu] = useState('');
     const [saving, setSaving] = useState(false);
 
@@ -37,14 +39,20 @@ export default function AdminInventory() {
     const fetchLichSu = useCallback(async () => {
         setLoading(true);
         const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/lich-su-nhap-kho`, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        if (data.success) setLichSu(data.data);
+        // Fetch cả nhập và xuất
+        const [resN, resX] = await Promise.all([
+            fetch(`${API_BASE_URL}/admin/lich-su-nhap-kho`, { headers: { Authorization: `Bearer ${token}` } }),
+            fetch(`${API_BASE_URL}/admin/lich-su-xuat-kho`, { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        const dataN = await resN.json();
+        const dataX = await resX.json();
+        if (dataN.success) setLichSu(dataN.data);
+        if (dataX.success) setLichSuXuat(dataX.data);
         setLoading(false);
     }, []);
 
     useEffect(() => {
-        if (activeTab === 'danh-sach' || activeTab === 'nhap-kho') fetchNguyenLieu();
+        if (activeTab === 'danh-sach' || activeTab === 'nhap-kho' || activeTab === 'xuat-kho') fetchNguyenLieu();
         if (activeTab === 'lich-su') fetchLichSu();
     }, [activeTab, fetchNguyenLieu, fetchLichSu]);
 
@@ -107,6 +115,38 @@ export default function AdminInventory() {
         setSaving(false);
     };
 
+    // ===== XUẤT KHO =====
+    const handleAddRowXuat = () => setPhieuXuat([...phieuXuat, { ma_nguyen_lieu: '', so_luong: '' }]);
+    const handleRemoveRowXuat = (index) => setPhieuXuat(phieuXuat.filter((_, i) => i !== index));
+    const handleRowChangeXuat = (index, field, value) => {
+        const newPhieu = [...phieuXuat];
+        newPhieu[index][field] = value;
+        setPhieuXuat(newPhieu);
+    };
+
+    const handleSubmitXuatKho = async () => {
+        const chiTiet = phieuXuat.filter(p => p.ma_nguyen_lieu && p.so_luong > 0);
+        if (chiTiet.length === 0) return showToast('Vui lòng nhập ít nhất 1 dòng hợp lệ', 'error');
+        
+        setSaving(true);
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/admin/xuat-kho`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ chi_tiet: chiTiet, ghi_chu: ghiChu, nguoi_xuat: 'Admin' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message);
+            setPhieuXuat([{ ma_nguyen_lieu: '', so_luong: '' }]);
+            setGhiChu('');
+            setActiveTab('danh-sach');
+        } else {
+            showToast(data.message, 'error');
+        }
+        setSaving(false);
+    };
+
     return (
         <div className="admin-section">
             {toast && <div className={`admin-toast ${toast.type}`}>{toast.msg}</div>}
@@ -121,6 +161,7 @@ export default function AdminInventory() {
                 <div style={{display: 'flex', gap: '10px'}}>
                     <button className={`btn-admin-tab ${activeTab === 'danh-sach' ? 'active' : ''}`} onClick={() => setActiveTab('danh-sach')}>Danh Sách</button>
                     <button className={`btn-admin-tab ${activeTab === 'nhap-kho' ? 'active' : ''}`} onClick={() => setActiveTab('nhap-kho')}>Nhập Kho</button>
+                    <button className={`btn-admin-tab ${activeTab === 'xuat-kho' ? 'active' : ''}`} onClick={() => setActiveTab('xuat-kho')}>Xuất Kho</button>
                     <button className={`btn-admin-tab ${activeTab === 'lich-su' ? 'active' : ''}`} onClick={() => setActiveTab('lich-su')}>Lịch Sử</button>
                 </div>
             </div>
@@ -221,46 +262,123 @@ export default function AdminInventory() {
                         </div>
                     )}
 
+                    {/* TAB XUẤT KHO */}
+                    {activeTab === 'xuat-kho' && (
+                        <div className="inventory-import-form">
+                            <h3>Tạo Phiếu Xuất Kho</h3>
+                            <div className="import-rows">
+                                {phieuXuat.map((row, idx) => (
+                                    <div key={idx} className="import-row" style={{display:'flex', gap:'15px', marginBottom:'15px', alignItems:'flex-end'}}>
+                                        <div className="form-group" style={{flex: 2, margin: 0}}>
+                                            <label>Nguyên Liệu</label>
+                                            <select value={row.ma_nguyen_lieu} onChange={e => handleRowChangeXuat(idx, 'ma_nguyen_lieu', e.target.value)}>
+                                                <option value="">-- Chọn Nguyên Liệu --</option>
+                                                {nguyenLieu.filter(n => n.trang_thai === 'hoat_dong').map(nl => (
+                                                    <option key={nl.ma_nguyen_lieu} value={nl.ma_nguyen_lieu}>{nl.ten_nguyen_lieu} ({nl.don_vi_tinh}) - Tồn: {nl.so_luong_ton}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="form-group" style={{flex: 1, margin: 0}}>
+                                            <label>Số Lượng Xuất</label>
+                                            <input type="number" min="0.1" step="0.1" value={row.so_luong} onChange={e => handleRowChangeXuat(idx, 'so_luong', e.target.value)} placeholder="0" />
+                                        </div>
+                                        <div className="form-group" style={{margin: 0}}>
+                                            <button className="btn-delete" style={{padding:'10px'}} onClick={() => handleRemoveRowXuat(idx)}>✕</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <button className="btn-admin-secondary" onClick={handleAddRowXuat} style={{marginBottom:'20px'}}>+ Thêm dòng</button>
+                            
+                            <div className="form-group">
+                                <label>Ghi chú phiếu xuất</label>
+                                <input value={ghiChu} onChange={e => setGhiChu(e.target.value)} placeholder="Lý do xuất (hủy món, hỏng hóc...)" />
+                            </div>
+
+                            <div style={{marginTop: '20px', display: 'flex', justifyContent: 'flex-end'}}>
+                                <button className="btn-save" onClick={handleSubmitXuatKho} disabled={saving}>{saving ? '⏳ Đang xử lý...' : '💾 Xác Nhận Xuất Kho'}</button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* TAB LỊCH SỬ */}
                     {activeTab === 'lich-su' && (
                         <div className="history-list">
-                            {lichSu.map(phieu => (
-                                <div key={phieu.ma_nhap_kho} className="admin-card" style={{marginBottom:'20px', padding:'20px'}}>
-                                    <div style={{display:'flex', justifyContent:'space-between', borderBottom:'1px solid #ddd', paddingBottom:'10px', marginBottom:'10px'}}>
-                                        <h4>Phiếu Nhập #{phieu.ma_nhap_kho}</h4>
-                                        <span style={{color:'#666'}}>{new Date(phieu.ngay_nhap).toLocaleString('vi-VN')}</span>
-                                    </div>
-                                    <p><strong>Người nhập:</strong> {phieu.nguoi_nhap}</p>
-                                    <p><strong>Ghi chú:</strong> {phieu.ghi_chu || 'Không có'}</p>
-                                    <table className="admin-table" style={{marginTop:'10px'}}>
-                                        <thead>
-                                            <tr>
-                                                <th>Nguyên Liệu</th>
-                                                <th>Số Lượng</th>
-                                                <th>Đơn Giá</th>
-                                                <th>Thành Tiền</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {phieu.chi_tiet.map(ct => (
-                                                <tr key={ct.ma_chi_tiet}>
-                                                    <td>{ct.ten_nguyen_lieu}</td>
-                                                    <td>{ct.so_luong} {ct.don_vi_tinh}</td>
-                                                    <td>{formatMoney(ct.don_gia)}</td>
-                                                    <td>{formatMoney(ct.so_luong * ct.don_gia)}</td>
+                            <h3 style={{marginBottom:'15px'}}>Lịch sử Giao dịch Kho</h3>
+                            
+                            {/* Danh sách Nhập */}
+                            <div className="history-section" style={{marginBottom: '40px'}}>
+                                <h4 style={{color: '#10b981', borderBottom: '2px solid #10b981', display:'inline-block', paddingBottom:'5px', marginBottom:'20px'}}>⬇ Lịch sử Nhập Kho</h4>
+                                {lichSu.map(phieu => (
+                                    <div key={`nhap-${phieu.ma_nhap_kho}`} className="admin-card" style={{marginBottom:'20px', padding:'20px'}}>
+                                        <div style={{display:'flex', justifyContent:'space-between', borderBottom:'1px solid #ddd', paddingBottom:'10px', marginBottom:'10px'}}>
+                                            <h5>Phiếu Nhập #{phieu.ma_nhap_kho}</h5>
+                                            <span style={{color:'#666'}}>{new Date(phieu.ngay_nhap).toLocaleString('vi-VN')}</span>
+                                        </div>
+                                        <p><strong>Người nhập:</strong> {phieu.nguoi_nhap}</p>
+                                        <p><strong>Ghi chú:</strong> {phieu.ghi_chu || 'Không có'}</p>
+                                        <table className="admin-table" style={{marginTop:'10px'}}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Nguyên Liệu</th>
+                                                    <th>Số Lượng</th>
+                                                    <th>Đơn Giá</th>
+                                                    <th>Thành Tiền</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td colSpan="3" style={{textAlign:'right'}}><strong>Tổng Cộng:</strong></td>
-                                                <td><strong style={{color:'#ef4444'}}>{formatMoney(phieu.tong_tien)}</strong></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            ))}
-                            {lichSu.length === 0 && <p style={{textAlign:'center'}}>Chưa có lịch sử nhập kho nào.</p>}
+                                            </thead>
+                                            <tbody>
+                                                {phieu.chi_tiet.map(ct => (
+                                                    <tr key={`ct-nhap-${ct.ma_chi_tiet}`}>
+                                                        <td>{ct.ten_nguyen_lieu}</td>
+                                                        <td>{ct.so_luong} {ct.don_vi_tinh}</td>
+                                                        <td>{formatMoney(ct.don_gia)}</td>
+                                                        <td>{formatMoney(ct.so_luong * ct.don_gia)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                            <tfoot>
+                                                <tr>
+                                                    <td colSpan="3" style={{textAlign:'right'}}><strong>Tổng Cộng:</strong></td>
+                                                    <td><strong style={{color:'#ef4444'}}>{formatMoney(phieu.tong_tien)}</strong></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                ))}
+                                {lichSu.length === 0 && <p style={{textAlign:'center', color:'#888'}}>Chưa có lịch sử nhập kho nào.</p>}
+                            </div>
+
+                            {/* Danh sách Xuất */}
+                            <div className="history-section">
+                                <h4 style={{color: '#f59e0b', borderBottom: '2px solid #f59e0b', display:'inline-block', paddingBottom:'5px', marginBottom:'20px'}}>⬆ Lịch sử Xuất Kho</h4>
+                                {lichSuXuat.map(phieu => (
+                                    <div key={`xuat-${phieu.ma_xuat_kho}`} className="admin-card" style={{marginBottom:'20px', padding:'20px'}}>
+                                        <div style={{display:'flex', justifyContent:'space-between', borderBottom:'1px solid #ddd', paddingBottom:'10px', marginBottom:'10px'}}>
+                                            <h5>Phiếu Xuất #{phieu.ma_xuat_kho}</h5>
+                                            <span style={{color:'#666'}}>{new Date(phieu.ngay_xuat).toLocaleString('vi-VN')}</span>
+                                        </div>
+                                        <p><strong>Người xuất:</strong> {phieu.nguoi_xuat}</p>
+                                        <p><strong>Ghi chú:</strong> {phieu.ghi_chu || 'Không có'}</p>
+                                        <table className="admin-table" style={{marginTop:'10px'}}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Nguyên Liệu</th>
+                                                    <th>Số Lượng</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {phieu.chi_tiet.map(ct => (
+                                                    <tr key={`ct-xuat-${ct.ma_chi_tiet}`}>
+                                                        <td>{ct.ten_nguyen_lieu}</td>
+                                                        <td>{ct.so_luong} {ct.don_vi_tinh}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ))}
+                                {lichSuXuat.length === 0 && <p style={{textAlign:'center', color:'#888'}}>Chưa có lịch sử xuất kho nào.</p>}
+                            </div>
                         </div>
                     )}
 

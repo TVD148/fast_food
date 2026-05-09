@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminDashboard from './AdminDashboard';
-import AdminOrders from './AdminOrders';
+import AdminVouchers from './AdminVouchers';
 import AdminMenu from './AdminMenu';
 import AdminCategories from './AdminCategories';
 import AdminUsers from './AdminUsers';
@@ -10,7 +10,7 @@ import './admin.css';
 
 const NAV_ITEMS = [
     { key: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { key: 'orders',    label: 'Đơn hàng',  icon: '🛒' },
+    { key: 'vouchers',  label: 'Khuyến mãi',icon: '🎟️' },
     { key: 'menu',      label: 'Thực đơn',  icon: '🍔' },
     { key: 'categories',label: 'Danh mục',  icon: '📂' },
     { key: 'inventory', label: 'Kho hàng',  icon: '📦' },
@@ -27,7 +27,7 @@ export default function AdminPage({ onExitAdmin }) {
     const renderContent = () => {
         switch(activeTab) {
             case 'dashboard':   return <AdminDashboard onNavigate={setActiveTab} />;
-            case 'orders':      return <AdminOrders />;
+            case 'vouchers':    return <AdminVouchers />;
             case 'menu':        return <AdminMenu />;
             case 'categories':  return <AdminCategories />;
             case 'inventory':   return <AdminInventory />;

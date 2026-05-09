@@ -9,19 +9,23 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
 
   // Form fields
-  const [name, setName] = useState('');
+  const [hoDem, setHoDem] = useState('');
+  const [ten, setTen] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const { register, login, sendOTP, verifyAndResetPassword, loginWithGoogle, loginWithApple } = useAuth();
 
   if (!isOpen) return null;
 
   const resetForm = () => {
-    setName('');
+    setHoDem('');
+    setTen('');
     setEmail('');
     setPassword('');
     setConfirmPassword('');
@@ -118,7 +122,8 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
         setMessage({ text: 'Mật khẩu phải có ít nhất 6 ký tự!', type: 'error' });
         return;
       }
-      const result = await register(name, email, password);
+      const fullName = `${hoDem} ${ten}`.trim();
+      const result = await register(fullName, email, password);
       setMessage({ text: result.message, type: result.success ? 'success' : 'error' });
       if (result.success) {
         const loginResult = await login(email, password);
@@ -319,16 +324,29 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
               ) : (
                 <form onSubmit={handleSubmit}>
                   {!isLogin && (
-                    <div className="mb-3">
-                      <label className="form-label fw-semibold text-dark">Họ và tên</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        placeholder="Nhập họ và tên của bạn" 
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required 
-                      />
+                    <div className="row g-2 mb-3">
+                      <div className="col-8">
+                        <label className="form-label fw-semibold text-dark">Họ và tên đệm</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          placeholder="Nguyễn Văn" 
+                          value={hoDem}
+                          onChange={(e) => setHoDem(e.target.value)}
+                          required 
+                        />
+                      </div>
+                      <div className="col-4">
+                        <label className="form-label fw-semibold text-dark">Tên</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          placeholder="A" 
+                          value={ten}
+                          onChange={(e) => setTen(e.target.value)}
+                          required 
+                        />
+                      </div>
                     </div>
                   )}
                   
@@ -346,38 +364,52 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
                   
                   <div className="mb-3">
                     <label className="form-label fw-semibold text-dark">Mật khẩu</label>
-                    <input 
-                      type="password" 
-                      className="form-control" 
-                      placeholder="Nhập mật khẩu" 
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required 
-                    />
+                    <div className="position-relative">
+                      <input 
+                        type={showPassword ? "text" : "password"} 
+                        className="form-control pe-5" 
+                        placeholder="Nhập mật khẩu" 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required 
+                      />
+                      <button 
+                        type="button" 
+                        className="btn position-absolute top-50 end-0 translate-middle-y border-0 text-muted"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{ zIndex: 10 }}
+                      >
+                        <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                      </button>
+                    </div>
                   </div>
 
                   {!isLogin && (
                     <div className="mb-3">
                       <label className="form-label fw-semibold text-dark">Xác nhận mật khẩu</label>
-                      <input 
-                        type="password" 
-                        className="form-control" 
-                        placeholder="Nhập lại mật khẩu" 
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required 
-                      />
+                      <div className="position-relative">
+                        <input 
+                          type={showConfirmPassword ? "text" : "password"} 
+                          className="form-control pe-5" 
+                          placeholder="Nhập lại mật khẩu" 
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required 
+                        />
+                        <button 
+                          type="button" 
+                          className="btn position-absolute top-50 end-0 translate-middle-y border-0 text-muted"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          style={{ zIndex: 10 }}
+                        >
+                          <i className={`bi ${showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                        </button>
+                      </div>
                     </div>
                   )}
 
                   {isLogin && (
-                    <div className="d-flex justify-content-between align-items-center mb-4">
-                      <div className="form-check">
-                        <input type="checkbox" className="form-check-input" id="rememberMe" />
-                        <label className="form-check-label text-muted" htmlFor="rememberMe">
-                          Ghi nhớ đăng nhập
-                        </label>
-                      </div>
+                    <div className="d-flex justify-content-end align-items-center mb-4">
                       <span 
                         className="text-decoration-none text-success small fw-semibold" 
                         style={{ cursor: 'pointer' }}

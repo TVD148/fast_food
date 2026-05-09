@@ -48,17 +48,17 @@ export const CartProvider = ({ children }) => {
     fetchCart();
   }, [isLoggedIn]);
 
-  const addToCart = async (product) => {
+  const addToCart = async (product, quantity = 1) => {
     // Nếu chưa đăng nhập hoặc là user Firebase (không có JWT) -> dùng local state
     if (!isLoggedIn || !hasToken()) {
       setCartItems(prevItems => {
         const existingItem = prevItems.find(item => item.id === product.id);
         if (existingItem) {
           return prevItems.map(item => 
-            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+            item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
           );
         }
-        return [...prevItems, { ...product, quantity: 1 }];
+        return [...prevItems, { ...product, quantity: quantity }];
       });
       return;
     }
@@ -71,7 +71,7 @@ export const CartProvider = ({ children }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ma_mon_an: product.id, so_luong: 1 })
+        body: JSON.stringify({ ma_mon_an: product.id, so_luong: quantity })
       });
       const data = await res.json();
       if (data.success) {
@@ -79,10 +79,10 @@ export const CartProvider = ({ children }) => {
           const existingItem = prevItems.find(item => item.id === product.id);
           if (existingItem) {
             return prevItems.map(item => 
-              item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+              item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
             );
           }
-          return [...prevItems, { ...product, quantity: 1 }];
+          return [...prevItems, { ...product, quantity: quantity }];
         });
       } else {
         alert(data.message);

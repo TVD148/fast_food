@@ -89,11 +89,24 @@ const dangNhap = async (req, res) => {
         const user = users[0];
         
         // 2.1 Kiểm tra trạng thái tài khoản
-        if (user.trang_thai === 'bi_khoa') {
-            return res.status(403).json({ success: false, message: 'Tài khoản của bạn đang bị khóa tạm thời. Vui lòng liên hệ quản trị viên!' });
-        }
-        if (user.trang_thai === 'bi_cam') {
-            return res.status(403).json({ success: false, message: 'Tài khoản của bạn đã bị cấm vĩnh viễn vi phạm chính sách!' });
+        if (user.trang_thai === 'bi_khoa' || user.trang_thai === 'bi_cam') {
+            if (user.khoa_den_ngay) {
+                const now = new Date();
+                const lockUntil = new Date(user.khoa_den_ngay);
+                if (now < lockUntil) {
+                    const diffTime = Math.ceil((lockUntil - now) / (1000 * 60 * 60 * 24));
+                    const timeStr = lockUntil.getFullYear() > 2099 ? 'vĩnh viễn' : `đến ngày ${lockUntil.toLocaleDateString('vi-VN')}`;
+                    return res.status(403).json({ 
+                        success: false, 
+                        message: `Tài khoản của bạn đang bị khóa ${timeStr}. Vui lòng quay lại sau!` 
+                    });
+                } else {
+                    // Tự động mở khóa nếu hết hạn
+                    await db.query('UPDATE NGUOI_DUNG SET trang_thai = "hoat_dong", khoa_den_ngay = NULL WHERE ma_nguoi_dung = ?', [user.ma_nguoi_dung]);
+                }
+            } else {
+                return res.status(403).json({ success: false, message: 'Tài khoản của bạn đang bị khóa. Vui lòng liên hệ quản trị viên!' });
+            }
         }
 
         // 3. So sánh mật khẩu trực tiếp (ko mã hóa)

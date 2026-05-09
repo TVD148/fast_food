@@ -4,7 +4,7 @@ import ConfirmDialog from './ConfirmDialog';
 
 const formatMoney = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
 
-const EMPTY_FORM = { ten_mon: '', mo_ta: '', gia_ban: '', hinh_anh: '', ma_danh_muc: '', trang_thai: 'dang_ban', cong_thuc: [] };
+const EMPTY_FORM = { ten_mon: '', mo_ta: '', gia_ban: '', hinh_anh: '', ma_danh_muc: '', trang_thai: 'con_hang', cong_thuc: [] };
 
 export default function AdminMenu() {
     const [items, setItems] = useState([]);
@@ -137,12 +137,12 @@ export default function AdminMenu() {
             {loading ? <div className="admin-loading">⏳ Đang tải...</div> : (
                 <div className="menu-grid">
                     {filtered.map(item => (
-                        <div key={item.ma_mon_an} className={`menu-card ${item.trang_thai === 'ngung_ban' ? 'out-of-stock' : ''}`}>
+                        <div key={item.ma_mon_an} className={`menu-card ${item.trang_thai === 'het_hang' ? 'out-of-stock' : ''}`}>
                             <div className="menu-card-img-wrap">
                                 <img src={item.hinh_anh || 'https://via.placeholder.com/200x140?text=No+Image'} alt={item.ten_mon}
                                     onError={e => e.target.src = 'https://via.placeholder.com/200x140?text=No+Image'} />
                                 <span className={`menu-status-tag ${item.trang_thai}`}>
-                                    {item.trang_thai === 'dang_ban' ? '✅ Đang bán' : '❌ Ngừng bán'}
+                                    {item.trang_thai === 'con_hang' ? '✅ Đang bán' : '❌ Ngừng bán'}
                                 </span>
                             </div>
                             <div className="menu-card-body">
@@ -186,9 +186,32 @@ export default function AdminMenu() {
                                 </div>
                             </div>
                             <div className="form-group">
-                                <label>URL Hình ảnh</label>
-                                <input value={form.hinh_anh} onChange={e => setForm({ ...form, hinh_anh: e.target.value })} placeholder="https://..." />
-                                {form.hinh_anh && <img src={form.hinh_anh} alt="preview" className="img-preview" onError={e => e.target.style.display = 'none'} />}
+                                <label>Hình ảnh (Tối đa 2MB)</label>
+                                <div className="d-flex gap-2">
+                                    <input 
+                                        type="file" 
+                                        accept="image/*"
+                                        className="form-control"
+                                        onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                if (file.size > 2 * 1024 * 1024) {
+                                                    alert('Hình ảnh quá lớn! Vui lòng chọn ảnh dưới 2MB.');
+                                                    e.target.value = '';
+                                                    return;
+                                                }
+                                                const reader = new FileReader();
+                                                reader.onloadend = () => {
+                                                    setForm({ ...form, hinh_anh: reader.result });
+                                                };
+                                                reader.readAsDataURL(file);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <div className="mt-2 text-muted small">Hoặc nhập URL:</div>
+                                <input value={form.hinh_anh?.startsWith('data:') ? '' : form.hinh_anh} onChange={e => setForm({ ...form, hinh_anh: e.target.value })} placeholder="https://..." />
+                                {form.hinh_anh && <img src={form.hinh_anh} alt="preview" className="img-preview mt-2" style={{maxHeight: '150px', objectFit: 'contain'}} onError={e => e.target.style.display = 'none'} />}
                             </div>
                             <div className="form-group">
                                 <label>Mô tả</label>
@@ -197,8 +220,8 @@ export default function AdminMenu() {
                             <div className="form-group">
                                 <label>Tình trạng kinh doanh</label>
                                 <select value={form.trang_thai} onChange={e => setForm({ ...form, trang_thai: e.target.value })}>
-                                    <option value="dang_ban">✅ Đang bán</option>
-                                    <option value="ngung_ban">❌ Tạm ngừng bán</option>
+                                    <option value="con_hang">✅ Đang bán</option>
+                                    <option value="het_hang">❌ Tạm ngừng bán</option>
                                 </select>
                             </div>
 

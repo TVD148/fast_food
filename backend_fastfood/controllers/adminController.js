@@ -357,17 +357,34 @@ const getAllNguoiDung = async (req, res) => {
 const khoaTaiKhoan = async (req, res) => {
     try {
         const { id } = req.params;
-        const { trang_thai } = req.body; // 'hoat_dong' | 'bi_khoa' | 'bi_cam'
-        const validStatuses = ['hoat_dong', 'bi_khoa', 'bi_cam'];
-        if (!validStatuses.includes(trang_thai)) {
-            return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ!' });
-        }
+        const { trang_thai, so_ngay } = req.body; // trang_thai: 'hoat_dong' | 'bi_khoa', so_ngay: 1, 3, 7, 30, -1 (vĩnh viễn), 0 (mở khóa)
+        
         if (parseInt(id) === req.user.id) {
             return res.status(400).json({ success: false, message: 'Không thể thay đổi trạng thái tài khoản của chính mình!' });
         }
-        await db.query('UPDATE NGUOI_DUNG SET trang_thai = ? WHERE ma_nguoi_dung = ?', [trang_thai, id]);
-        const labels = { hoat_dong: 'Mở khóa', bi_khoa: 'Khóa', bi_cam: 'Cấm vĩnh viễn' };
-        res.json({ success: true, message: `${labels[trang_thai]} tài khoản thành công!` });
+
+        let khoa_den_ngay = null;
+        let set_trang_thai = 'hoat_dong';
+
+        if (trang_thai === 'bi_khoa' || trang_thai === 'bi_cam') {
+            set_trang_thai = 'bi_khoa';
+            if (so_ngay === -1) {
+                khoa_den_ngay = '9999-12-31 23:59:59'; // Vĩnh viễn
+            } else if (so_ngay > 0) {
+                const date = new Date();
+                date.setDate(date.getDate() + so_ngay);
+                khoa_den_ngay = date;
+            }
+        }
+
+        await db.query('UPDATE NGUOI_DUNG SET trang_thai = ?, khoa_den_ngay = ? WHERE ma_nguoi_dung = ?', [set_trang_thai, khoa_den_ngay, id]);
+        
+        let msg = 'Đã mở khóa tài khoản!';
+        if (set_trang_thai === 'bi_khoa') {
+            msg = so_ngay === -1 ? 'Đã khóa tài khoản vĩnh viễn!' : `Đã khóa tài khoản ${so_ngay} ngày!`;
+        }
+        
+        res.json({ success: true, message: msg });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Lỗi server' });
@@ -399,10 +416,61 @@ const xoaNguoiDung = async (req, res) => {
     }
 };
 
+// ========== QUẢN LÝ MÃ GIẢM GIÁ ==========
+const getAllVouchers = async (req, res) => {
+    try {
+        const [vouchers] = await db.query('SELECT * FROM MA_GIAM_GIA ORDER BY ngay_het_han DESC');
+        res.json({ success: true, data: vouchers });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+};
+
+const themVoucher = async (req, res) => {
+    try {
+        const { ma_code, phan_tram_giam, giam_toi_da, don_toi_thieu, ngay_het_han, so_luong, trang_thai } = req.body;
+        if (!ma_code || !phan_tram_giam) return res.status(400).json({ success: false, message: 'Vui lòng nhập mã và % giảm!' });
+        
+        await db.query(
+            'INSERT INTO MA_GIAM_GIA (ma_code, phan_tram_giam, giam_toi_da, don_toi_thieu, ngay_het_han, so_luong, trang_thai) VALUES (?,?,?,?,?,?,?)',
+            [ma_code, phan_tram_giam, giam_toi_da || 0, don_toi_thieu || 0, ngay_het_han, so_luong || 1, trang_thai || 'hoat_dong']
+        );
+        res.status(201).json({ success: true, message: 'Thêm mã giảm giá thành công!' });
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'Mã này đã tồn tại!' });
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+};
+
+const suaVoucher = async (req, res) => {
+    try {
+        const { code } = req.params;
+        const { phan_tram_giam, giam_toi_da, don_toi_thieu, ngay_het_han, so_luong, trang_thai } = req.body;
+        await db.query(
+            'UPDATE MA_GIAM_GIA SET phan_tram_giam=?, giam_toi_da=?, don_toi_thieu=?, ngay_het_han=?, so_luong=?, trang_thai=? WHERE ma_code=?',
+            [phan_tram_giam, giam_toi_da, don_toi_thieu, ngay_het_han, so_luong, trang_thai, code]
+        );
+        res.json({ success: true, message: 'Cập nhật mã giảm giá thành công!' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+};
+
+const xoaVoucher = async (req, res) => {
+    try {
+        const { code } = req.params;
+        await db.query('DELETE FROM MA_GIAM_GIA WHERE ma_code = ?', [code]);
+        res.json({ success: true, message: 'Xóa mã giảm giá thành công!' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+};
+
 module.exports = {
     getDashboardStats, getDoanhThuChart,
     getAllDonHang, capNhatTrangThaiDonHang,
     getAllMonAn, themMonAn, suaMonAn, xoaMonAn,
     getAllDanhMuc, themDanhMuc, suaDanhMuc, xoaDanhMuc,
-    getAllNguoiDung, capNhatVaiTro, xoaNguoiDung, khoaTaiKhoan
+    getAllNguoiDung, capNhatVaiTro, xoaNguoiDung, khoaTaiKhoan,
+    getAllVouchers, themVoucher, suaVoucher, xoaVoucher
 };

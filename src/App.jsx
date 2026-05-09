@@ -18,6 +18,7 @@ import CustomerProfilePage from './components/CustomerProfilePage';
 import ExitIntentPopup from './components/ExitIntentPopup';
 import AdminPage from './components/admin/AdminPage';
 import StaffDashboard from './components/StaffDashboard';
+import AboutPage from './components/AboutPage';
 import { useAuth } from './contexts/AuthContext';
 
 function App() {
@@ -69,15 +70,9 @@ function App() {
             <HeroSection />
           </div>
           
-          <div id="ve-chung-toi">
-            <FeaturedSection />
-          </div>
-
           <div id="mat-hang-hot">
             <BestSellingSection />
           </div>
-
-          <FeaturesSection />
 
           <div id="thuc-don">
             <ProductGrid />
@@ -85,13 +80,15 @@ function App() {
 
           <InstagramGallery />
         </>
+      ) : pageState.page === 'about' ? (
+        <AboutPage />
       ) : (
         <CustomerProfilePage 
           initialTab={pageState.profileTab} 
           onNavigateHome={() => navigateTo('home')} 
         />
       )}
-      <Footer />                   {/* 10. Chân trang */}
+      <Footer onNavigate={navigateTo} />                   {/* 10. Chân trang */}
 
       <AuthModal
         isOpen={isAuthModalOpen}
@@ -106,7 +103,10 @@ function App() {
       />
       
       {/* Tính năng giỏ hàng */}
-      <CartOffcanvas onCheckoutClick={() => setIsCheckoutOpen(true)} />
+      <CartOffcanvas 
+        onCheckoutClick={() => setIsCheckoutOpen(true)} 
+        onNavigate={navigateTo}
+      />
 
       {/* Điều hướng Mobile */}
       <MobileBottomNav onCartClick={() => {
