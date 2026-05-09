@@ -14,6 +14,8 @@ const CheckoutModal = ({ isOpen, onClose }) => {
     name: '',
     phone: '',
     address: '',
+    lat: null,
+    lng: null,
     note: '',
     paymentMethod: 'cash'
   });
@@ -21,15 +23,39 @@ const CheckoutModal = ({ isOpen, onClose }) => {
   const [voucherCode, setVoucherCode] = useState('');
   const [discountData, setDiscountData] = useState(null);
   const [voucherMessage, setVoucherMessage] = useState({ text: '', type: '' });
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
 
   React.useEffect(() => {
     if (isOpen && currentUser) {
+      // Load info
       setFormData(prev => ({
         ...prev,
         name: currentUser.name || currentUser.ho_ten || '',
-        phone: currentUser.phone || currentUser.so_dien_thoai || '',
-        address: currentUser.address || currentUser.dia_chi || ''
+        phone: currentUser.phone || currentUser.so_dien_thoai || ''
       }));
+
+      // Fetch saved addresses
+      const fetchAddresses = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch(`${API_BASE_URL}/dia-chi`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.success && data.data.length > 0) {
+            setSavedAddresses(data.data);
+            const defaultAddr = data.data.find(a => a.la_mac_dinh) || data.data[0];
+            setFormData(prev => ({ 
+              ...prev, 
+              address: defaultAddr.dia_chi_chi_tiet,
+              lat: defaultAddr.vi_do,
+              lng: defaultAddr.kinh_do
+            }));
+          }
+        } catch (err) { console.error(err); }
+      };
+      fetchAddresses();
     }
   }, [isOpen, currentUser]);
   
@@ -93,6 +119,8 @@ const CheckoutModal = ({ isOpen, onClose }) => {
       const payload = {
         ho_ten_nguoi_nhan: formData.name,
         dia_chi_giao_hang: formData.address,
+        kinh_do: formData.lng,
+        vi_do: formData.lat,
         so_dien_thoai_giao: formData.phone,
         ghi_chu: formData.note,
         phuong_thuc_thanh_toan: dbPaymentMethod,
@@ -293,15 +321,49 @@ const CheckoutModal = ({ isOpen, onClose }) => {
                       <div className="mb-3">
                         <div className="d-flex justify-content-between align-items-end mb-1">
                           <label className="form-label small text-secondary mb-0">Địa chỉ nhận hàng (*)</label>
-                          <button 
-                            type="button" 
-                            className="btn btn-sm text-danger d-flex align-items-center gap-1 p-0 fw-semibold"
-                            onClick={() => setIsMapOpen(true)}
-                            title="Chọn vị trí trên bản đồ"
-                          >
-                            <i className="bi bi-geo-alt-fill"></i> Chọn trên bản đồ
-                          </button>
+                          <div className="d-flex gap-3">
+                            {savedAddresses.length > 0 && (
+                              <button 
+                                type="button" 
+                                className="btn btn-sm text-warning d-flex align-items-center gap-1 p-0 fw-bold"
+                                onClick={() => setShowAddressPicker(!showAddressPicker)}
+                              >
+                                <i className="bi bi-journal-text"></i> Sổ địa chỉ
+                              </button>
+                            )}
+                            <button 
+                              type="button" 
+                              className="btn btn-sm text-danger d-flex align-items-center gap-1 p-0 fw-semibold"
+                              onClick={() => setIsMapOpen(true)}
+                              title="Chọn vị trí trên bản đồ"
+                            >
+                              <i className="bi bi-geo-alt-fill"></i> Chọn trên bản đồ
+                            </button>
+                          </div>
                         </div>
+
+                        {showAddressPicker && savedAddresses.length > 0 && (
+                          <div className="bg-light border rounded p-2 mb-2 fade-in" style={{maxHeight: '150px', overflowY: 'auto'}}>
+                            {savedAddresses.map(addr => (
+                              <div 
+                                key={addr.ma_dia_chi} 
+                                className="p-2 border-bottom hover-bg-white cursor-pointer small"
+                                onClick={() => {
+                                  setFormData(prev => ({ 
+                                    ...prev, 
+                                    address: addr.dia_chi_chi_tiet,
+                                    lat: addr.vi_do,
+                                    lng: addr.kinh_do
+                                  }));
+                                  setShowAddressPicker(false);
+                                }}
+                              >
+                                <div className="fw-bold text-dark">{addr.ten_goi_nho} {addr.la_mac_dinh && <span className="badge bg-warning text-dark ms-1">Mặc định</span>}</div>
+                                <div className="text-muted">{addr.dia_chi_chi_tiet}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <textarea 
                           className="form-control" rows="2" name="address"
                           value={formData.address} onChange={handleChange}
@@ -429,7 +491,7 @@ const CheckoutModal = ({ isOpen, onClose }) => {
       <MapPickerModal 
         isOpen={isMapOpen} 
         onClose={() => setIsMapOpen(false)} 
-        onConfirm={(address) => setFormData(prev => ({ ...prev, address }))} 
+        onConfirm={(data) => setFormData(prev => ({ ...prev, address: data.address, lat: data.lat, lng: data.lng }))} 
         initialAddress={formData.address}
       />
     </>

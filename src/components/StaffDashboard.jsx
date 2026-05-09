@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import './admin/admin.css';
 import './StaffDashboard.css';
 import { API_BASE_URL } from '../apiConfig';
 
@@ -26,15 +27,7 @@ const Toast = ({ message, type, onClose }) => {
   return <div className={`staff-toast ${type}`}><span>{message}</span></div>;
 };
 
-// ── Shift Stats Bar ────────────────────────────────────────
-const ShiftStats = ({ stats }) => (
-  <div className="shift-stats-bar">
-    <div className="shift-stat"><div className="shift-stat-num">{stats.tongDonHomNay ?? '—'}</div><div className="shift-stat-lbl">Đơn hôm nay</div></div>
-    <div className="shift-stat"><div className="shift-stat-num" style={{color:'#f59e0b'}}>{(stats.danhSachCho ?? 0) + (stats.dangCheB ?? 0)}</div><div className="shift-stat-lbl">Đang xử lý</div></div>
-    <div className="shift-stat"><div className="shift-stat-num" style={{color:'#10b981'}}>{stats.hoanThanhHom ?? '—'}</div><div className="shift-stat-lbl">Hoàn thành</div></div>
-    <div className="shift-stat"><div className="shift-stat-num" style={{color:'#ff6b35'}}>{fmt(stats.doanhThuCa ?? 0)}</div><div className="shift-stat-lbl">Doanh thu ca</div></div>
-  </div>
-);
+// -- Shift Stats Bar -- (REMOVED)
 
 // ── Email Modal ────────────────────────────────────────────
 const EmailModal = ({ order, onClose, onSend, sending }) => {
@@ -200,10 +193,10 @@ const InventoryTab = ({ token, showToast }) => {
   const conHang = monAn.filter(m=>m.trang_thai==='con_hang').length;
   return (
     <>
-      <div className="staff-stats">
-        <div className="stat-card"><div className="stat-number" style={{color:'#10b981'}}>{conHang}</div><div className="stat-label">Đang có hàng</div></div>
-        <div className="stat-card"><div className="stat-number" style={{color:'#ef4444'}}>{monAn.length-conHang}</div><div className="stat-label">Đã ẩn</div></div>
-        <div className="stat-card"><div className="stat-number" style={{color:'#f59e0b'}}>{monAn.length}</div><div className="stat-label">Tổng món</div></div>
+      <div className="stat-grid">
+        <div className="stat-card" style={{background: '#10b981'}}><div className="stat-icon">✅</div><div className="stat-info"><div className="stat-value">{conHang}</div><div className="stat-label">Đang có hàng</div></div></div>
+        <div className="stat-card" style={{background: '#ef4444'}}><div className="stat-icon">🚫</div><div className="stat-info"><div className="stat-value">{monAn.length-conHang}</div><div className="stat-label">Đã ẩn</div></div></div>
+        <div className="stat-card" style={{background: '#f59e0b'}}><div className="stat-icon">🍔</div><div className="stat-info"><div className="stat-value">{monAn.length}</div><div className="stat-label">Tổng món</div></div></div>
       </div>
       <div className="inventory-grid">
         {monAn.map(mon=>(
@@ -238,6 +231,7 @@ const StaffDashboard = ({ user, onNavigateHome }) => {
   const [printOrder, setPrintOrder] = useState(null);
   const [emailOrder, setEmailOrder] = useState(null);
   const [emailSending, setEmailSending] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toast, setToast] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const prevIds = useRef(new Set());
@@ -324,93 +318,186 @@ const StaffDashboard = ({ user, onNavigateHome }) => {
   const stats = Object.keys(STATUS_CFG).reduce((a,k)=>({...a,[k]:orders.filter(o=>o.trang_thai===k).length}),{});
   const pendingCount = (stats.cho_duyet||0)+(stats.dang_che_bien||0);
 
+  const NAV_ITEMS = [
+    { key: 'orders',    label: 'Đơn hàng',  icon: '📋' },
+    { key: 'inventory', label: 'Tồn kho',   icon: '🥗' },
+  ];
+
   return (
-    <div className="staff-wrapper">
-      {/* Header */}
-      <div className="staff-header">
-        <div className="staff-header-left">
-          <div className="staff-logo">🧾</div>
-          <div>
-            <div className="staff-title">Quầy Thu Ngân</div>
-            <div className="staff-subtitle">Xin chào, {user?.ho_ten||'Nhân viên'} • {lastUpdated && `Cập nhật: ${lastUpdated.toLocaleTimeString('vi-VN')}`}</div>
-          </div>
+    <div className={`admin-layout ${sidebarOpen ? '' : 'collapsed'}`}>
+      {/* Sidebar */}
+      <aside className="admin-sidebar">
+        <div className="sidebar-brand">
+          <span className="brand-icon">🍟</span>
+          {sidebarOpen && <span className="brand-text">FastFood <span className="brand-admin">Staff</span></span>}
         </div>
-        <button className="staff-back-btn" onClick={onNavigateHome}>← Về trang chủ</button>
-      </div>
 
-      {/* Shift Stats */}
-      <ShiftStats stats={shiftStats}/>
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map(item => (
+            <button
+              key={item.key}
+              className={`sidebar-nav-item ${activeTab === item.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(item.key)}
+              title={!sidebarOpen ? item.label : ''}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              {sidebarOpen && <span className="nav-label">{item.label}</span>}
+              {!sidebarOpen && <span className="nav-tooltip">{item.label}</span>}
+            </button>
+          ))}
+        </nav>
 
-      {/* Tabs */}
-      <div className="staff-tabs">
-        <button className={`staff-tab ${activeTab==='orders'?'active':''}`} onClick={()=>setActiveTab('orders')}>
-          📋 Đơn hàng {pendingCount>0 && <span className="staff-tab-badge">{pendingCount}</span>}
-        </button>
-        <button className={`staff-tab ${activeTab==='inventory'?'active':''}`} onClick={()=>setActiveTab('inventory')}>
-          🥗 Tồn kho
-        </button>
-      </div>
+        <div className="sidebar-footer">
+          <button className="sidebar-nav-item" onClick={onNavigateHome} title="Về trang chủ">
+            <span className="nav-icon">🏠</span>
+            {sidebarOpen && <span className="nav-label">Trang chủ</span>}
+          </button>
+        </div>
+      </aside>
 
-      <div className="staff-content">
-        {activeTab==='orders' && (
-          <>
-            {/* Status counts */}
-            <div className="staff-stats">
-              {Object.entries(STATUS_CFG).map(([k,cfg])=>(
-                <div key={k} className={`stat-card ${filterStatus===k?'active':''}`} style={{cursor:'pointer'}} onClick={()=>setFilterStatus(k)}>
-                  <div className="stat-number" style={{color:cfg.color}}>{stats[k]||0}</div>
-                  <div className="stat-label">{cfg.icon} {cfg.label}</div>
-                </div>
-              ))}
+      {/* Main Area */}
+      <div className="admin-main">
+        {/* Topbar */}
+        <header className="admin-topbar">
+          <div className="topbar-left">
+            <button className="topbar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
+              {sidebarOpen ? '◀' : '▶'}
+            </button>
+            <div className="topbar-breadcrumb">
+              <span>Nhân viên</span>
+              <span className="breadcrumb-sep">›</span>
+              <span className="breadcrumb-active">{NAV_ITEMS.find(i => i.key === activeTab)?.label}</span>
             </div>
+          </div>
+          <div className="topbar-right">
+            <div className="topbar-user">
+              <div className="topbar-avatar">{user?.ho_ten?.charAt(0)?.toUpperCase() || 'S'}</div>
+              <div className="topbar-user-info">
+                <div className="topbar-user-name">{user?.ho_ten || 'Nhân viên'}</div>
+                <div className="topbar-user-role">🧑‍🍳 Nhân viên quầy</div>
+              </div>
+            </div>
+          </div>
+        </header>
 
-            {/* Toolbar */}
-            <div className="staff-toolbar">
-              <div className="staff-filter-tabs">
-                {[{key:'tat_ca',label:'Tất cả'},...Object.entries(STATUS_CFG).map(([k,c])=>({key:k,label:`${c.icon} ${c.label}`}))].map(f=>(
-                  <button key={f.key} className={`staff-filter-btn ${filterStatus===f.key?'active':''}`} onClick={()=>setFilterStatus(f.key)}>{f.label}</button>
+        {/* Content */}
+        <main className="admin-content">
+          {activeTab === 'orders' && (
+            <div className="admin-section">
+              <div className="admin-section-header">
+                <h2 className="admin-section-title">Quản lý đơn hàng</h2>
+                <div className="admin-count">
+                  {lastUpdated && `Cập nhật lúc: ${lastUpdated.toLocaleTimeString('vi-VN')}`}
+                </div>
+              </div>
+
+              {/* Status Stats (Like Admin Dash) */}
+              <div className="stat-grid">
+                {Object.entries(STATUS_CFG).map(([k, cfg]) => (
+                  <div 
+                    key={k} 
+                    className={`stat-card ${filterStatus === k ? 'active' : ''}`} 
+                    style={{ background: cfg.color, cursor: 'pointer' }}
+                    onClick={() => setFilterStatus(k)}
+                  >
+                    <div className="stat-icon">{cfg.icon}</div>
+                    <div className="stat-info">
+                      <div className="stat-value">{stats[k] || 0}</div>
+                      <div className="stat-label">{cfg.label}</div>
+                    </div>
+                  </div>
                 ))}
               </div>
-              <div className="staff-search-wrap">
-                <input className="staff-search" value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="🔍 Tìm tên / SĐT khách..."/>
-                {searchQ && <button className="search-clear" onClick={()=>setSearchQ('')}>×</button>}
+
+              {/* Toolbar */}
+              <div className="admin-toolbar" style={{ justifyContent: 'space-between' }}>
+                <div className="admin-filter-row">
+                  <button 
+                    className={`admin-filter-btn ${filterStatus === 'tat_ca' ? 'active' : ''}`}
+                    onClick={() => setFilterStatus('tat_ca')}
+                  >
+                    Tất cả
+                  </button>
+                  {Object.entries(STATUS_CFG).map(([k, c]) => (
+                    <button 
+                      key={k} 
+                      className={`admin-filter-btn ${filterStatus === k ? 'active' : ''}`}
+                      onClick={() => setFilterStatus(k)}
+                    >
+                      {c.icon} {c.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="staff-search-wrap">
+                  <input 
+                    className="admin-search" 
+                    value={searchQ} 
+                    onChange={e => setSearchQ(e.target.value)} 
+                    placeholder="🔍 Tìm tên / SĐT khách..."
+                  />
+                </div>
               </div>
-              <div className="staff-refresh-info"><span className="staff-refresh-dot"/>Tự động cập nhật mỗi 5s</div>
+
+              {/* Orders Grid */}
+              {loading ? (
+                <div className="admin-loading">Đang tải đơn hàng...</div>
+              ) : orders.length === 0 ? (
+                <div className="admin-empty">Không có đơn hàng nào.</div>
+              ) : (
+                <div className="staff-orders-grid">
+                  {orders.map(o => (
+                    <OrderCard 
+                      key={o.ma_don_hang} 
+                      order={o} 
+                      onStatusChange={handleStatusChange} 
+                      onPrint={setPrintOrder}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="admin-pagination">
+                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>‹</button>
+                  <span className="admin-count">Trang {page} / {totalPages}</span>
+                  <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>›</button>
+                </div>
+              )}
             </div>
+          )}
 
-            {/* Orders */}
-            {loading ? (
-              <div className="staff-loading"><div className="staff-spinner"/><span>Đang tải...</span></div>
-            ) : orders.length===0 ? (
-              <div className="staff-empty"><div className="staff-empty-icon">📭</div><div className="staff-empty-text">Không có đơn hàng nào</div></div>
-            ) : (
-              <div className="staff-orders-grid">
-                {orders.map(o=><OrderCard key={o.ma_don_hang} order={o} onStatusChange={handleStatusChange} onPrint={setPrintOrder}/>)}
+          {activeTab === 'inventory' && (
+            <div className="admin-section">
+              <div className="admin-section-header">
+                <h2 className="admin-section-title">Quản lý thực đơn</h2>
               </div>
-            )}
-
-            {/* Pagination */}
-            {totalPages>1 && (
-              <div className="staff-pagination">
-                <button className="page-btn" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>‹ Trước</button>
-                <span className="page-info">Trang {page} / {totalPages}</span>
-                <button className="page-btn" onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}>Sau ›</button>
-              </div>
-            )}
-          </>
-        )}
-
-        {activeTab==='inventory' && <InventoryTab token={token} showToast={showToast}/>}
+              <InventoryTab token={token} showToast={showToast} />
+            </div>
+          )}
+        </main>
       </div>
 
       {/* Bill Modal */}
-      {printOrder && <BillModal order={printOrder} onClose={()=>setPrintOrder(null)} onEmailClick={o=>{setEmailOrder(o);}}/>}
+      {printOrder && (
+        <div className="admin-modal-overlay">
+          <BillModal order={printOrder} onClose={() => setPrintOrder(null)} onEmailClick={o => setEmailOrder(o)} />
+        </div>
+      )}
 
       {/* Email Modal */}
-      {emailOrder && <EmailModal order={emailOrder} onClose={()=>setEmailOrder(null)} onSend={handleSendEmail} sending={emailSending}/>}
+      {emailOrder && (
+        <div className="admin-modal-overlay">
+          <EmailModal order={emailOrder} onClose={() => setEmailOrder(null)} onSend={handleSendEmail} sending={emailSending} />
+        </div>
+      )}
 
       {/* Toast */}
-      {toast && <Toast key={toast.id} message={toast.message} type={toast.type} onClose={()=>setToast(null)}/>}
+      {toast && (
+        <div className={`admin-toast ${toast.type}`}>
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 };

@@ -205,7 +205,11 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialAddress }) => {
       alert('Vui lòng chọn hoặc tìm kiếm vị trí giao hàng trên bản đồ!');
       return;
     }
-    onConfirm(address || searchText);
+    onConfirm({
+      address: address || searchText,
+      lat: markerPos ? markerPos[0] : null,
+      lng: markerPos ? markerPos[1] : null
+    });
     onClose();
   };
 
@@ -428,8 +432,8 @@ const MapPickerModal = ({ isOpen, onClose, onConfirm, initialAddress }) => {
             zoomControl={true}
           >
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; Google Maps'
+              url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
             />
             <MapClickHandler onLocationSelect={handleLocationSelect} />
             {flyTo && <FlyToLocation position={flyTo} />}

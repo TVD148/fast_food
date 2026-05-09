@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../apiConfig';
+import MapPickerModal from './MapPickerModal';
 
 const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
   const { currentUser, updateUser } = useAuth();
@@ -10,12 +11,17 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState({ text: '', type: '' });
   const [avatar, setAvatar] = useState(null);
+
+  // Address Management States
+  const [addresses, setAddresses] = useState([]);
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState(null);
+  const [addressLoading, setAddressLoading] = useState(false);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
@@ -74,12 +80,15 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
       setName(currentUser.name || currentUser.ho_ten || '');
       setEmail(currentUser.email || '');
       setPhone(currentUser.phone || currentUser.so_dien_thoai || '');
-      setAddress(currentUser.address || currentUser.dia_chi || '');
       setAvatar(currentUser.hinh_anh || currentUser.avatar || null);
     }
   }, [currentUser]);
 
+  // Fetch addresses when tab changes
   useEffect(() => {
+    if (activeTab === 'address' && currentUser) {
+      fetchAddresses();
+    }
     if (activeTab === 'history' && currentUser) {
       const fetchHistory = async () => {
         try {
@@ -98,6 +107,85 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
       fetchHistory();
     }
   }, [activeTab, currentUser]);
+
+  const fetchAddresses = async () => {
+    setAddressLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/dia-chi`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) setAddresses(data.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAddressLoading(false);
+    }
+  };
+
+  const handleDeleteAddress = async (id) => {
+    if (!window.confirm('Bạn có muốn xóa địa chỉ này?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/dia-chi/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAddresses();
+        setMessage({ text: 'Đã xóa địa chỉ!', type: 'success' });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSetDefaultAddress = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/dia-chi/${id}/mac-dinh`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAddresses();
+        setMessage({ text: 'Đã cập nhật địa chỉ mặc định!', type: 'success' });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMapConfirm = async (locationData) => {
+    try {
+      const { address: addr, lat, lng } = locationData;
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/dia-chi`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          ten_goi_nho: 'Địa chỉ mới', 
+          dia_chi_chi_tiet: addr,
+          kinh_do: lng, // Backend uses kinh_do (longitude), vi_do (latitude)
+          vi_do: lat,
+          la_mac_dinh: addresses.length === 0
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAddresses();
+        setMessage({ text: 'Đã thêm địa chỉ mới!', type: 'success' });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleCancelOrder = async (id) => {
     if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?')) return;
@@ -134,7 +222,7 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ho_ten: name, email, so_dien_thoai: phone, dia_chi: address, hinh_anh: avatar })
+        body: JSON.stringify({ ho_ten: name, email, so_dien_thoai: phone, hinh_anh: avatar })
       });
       
       const contentType = res.headers.get("content-type");
@@ -276,6 +364,13 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                 Lịch sử đặt hàng
               </button>
               <button 
+                className={`nav-link text-start rounded px-3 py-2 ${activeTab === 'address' ? 'active bg-warning text-dark fw-bold border-warning' : 'text-dark border border-transparent hover-bg-light'}`}
+                onClick={() => setActiveTab('address')}
+              >
+                <i className="bi bi-geo-alt me-2"></i>
+                Địa chỉ giao hàng
+              </button>
+              <button 
                 className={`nav-link text-start rounded px-3 py-2 ${activeTab === 'password' ? 'active bg-warning text-dark fw-bold border-warning' : 'text-dark border border-transparent hover-bg-light'}`}
                 onClick={() => setActiveTab('password')}
               >
@@ -347,16 +442,7 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                             placeholder="Chưa cập nhật"
                           />
                         </div>
-                        <div className="col-12">
-                          <label className="form-label fw-semibold text-dark small">Địa chỉ giao hàng mặc định</label>
-                          <textarea 
-                            className="form-control bg-light" 
-                            rows="3"
-                            value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            placeholder="Nhập địa chỉ của bạn"
-                          ></textarea>
-                        </div>
+                        {/* Address field removed from general info */}
                         
                         <div className="col-12 mt-4">
                           <button type="submit" className="btn btn-yellow fw-bold px-4 py-2">
@@ -369,21 +455,88 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                   <div className="col-md-4 d-none d-md-block border-start ps-4">
                     <p className="fw-semibold small text-muted mb-2">Avatar</p>
                     <div className="bg-light border text-center p-3 rounded mb-2">
-                        <div className="bg-secondary rounded-circle d-inline-flex justify-content-center align-items-center mb-3 text-white overflow-hidden" style={{width: '100px', height: '100px'}}>
+                        <div className="bg-secondary rounded-circle d-inline-flex justify-content-center align-items-center mb-3 text-white shadow-sm overflow-hidden" style={{width: '120px', height: '120px'}}>
                           {avatar ? (
                             <img src={avatar} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
                           ) : (
-                            <i className="bi bi-person-fill" style={{fontSize: '4rem'}}></i>
+                            <i className="bi bi-person-fill" style={{fontSize: '5rem'}}></i>
                           )}
                         </div>
-                        <p className="small text-muted fst-italic mb-2">{avatar ? 'Đã cập nhật' : 'Chưa cập nhật'}</p>
-                        <label className="btn btn-sm btn-outline-secondary">
-                          <i className="bi bi-camera me-1"></i> Đổi ảnh
-                          <input type="file" accept="image/*" className="d-none" onChange={handleAvatarChange} />
-                        </label>
+                        <div className="d-flex flex-column gap-2">
+                          <label className="btn btn-sm btn-yellow fw-bold">
+                            <i className="bi bi-camera me-1"></i> {avatar ? 'Đổi ảnh mới' : 'Tải ảnh lên'}
+                            <input type="file" accept="image/*" className="d-none" onChange={handleAvatarChange} />
+                          </label>
+                          {avatar && (
+                            <button className="btn btn-sm btn-outline-danger fw-bold" onClick={() => setAvatar(null)}>
+                              <i className="bi bi-trash me-1"></i> Xóa ảnh
+                            </button>
+                          )}
+                        </div>
+                        <p className="small text-muted mt-3 fst-italic">Nhấn "Lưu thông tin" sau khi đổi ảnh để xác nhận thay đổi.</p>
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* TAB QUẢN LÝ ĐỊA CHỈ */}
+            {activeTab === 'address' && (
+              <div className="fade-in">
+                <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                  <h4 className="fw-bold text-dark mb-0">ĐỊA CHỈ GIAO HÀNG</h4>
+                  <button className="btn btn-dark btn-sm fw-bold px-3 py-2 rounded-pill" onClick={() => setIsMapOpen(true)}>
+                    <i className="bi bi-plus-lg me-1"></i> Thêm địa chỉ
+                  </button>
+                </div>
+
+                {addressLoading ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-warning" role="status"></div>
+                    <p className="text-muted mt-2">Đang tải danh sách địa chỉ...</p>
+                  </div>
+                ) : addresses.length > 0 ? (
+                  <div className="row g-3">
+                    {addresses.map((addr) => (
+                      <div key={addr.ma_dia_chi} className="col-12">
+                        <div className={`card border ${addr.la_mac_dinh ? 'border-warning shadow-sm' : ''} p-3 position-relative`}>
+                          {addr.la_mac_dinh && (
+                            <span className="position-absolute top-0 end-0 bg-warning text-dark px-2 py-1 small fw-bold rounded-start" style={{fontSize: '10px'}}>
+                              MẶC ĐỊNH
+                            </span>
+                          )}
+                          <div className="d-flex align-items-start gap-3">
+                            <div className="bg-light rounded-circle p-2 text-warning fs-4">
+                              <i className={`bi ${addr.ten_goi_nho === 'Nhà' ? 'bi-house-fill' : addr.ten_goi_nho === 'Công ty' ? 'bi-briefcase-fill' : 'bi-geo-alt-fill'}`}></i>
+                            </div>
+                            <div className="flex-grow-1">
+                              <h6 className="fw-bold mb-1">{addr.ten_goi_nho}</h6>
+                              <p className="text-muted small mb-2">{addr.dia_chi_chi_tiet}</p>
+                              <div className="d-flex gap-3">
+                                {!addr.la_mac_dinh && (
+                                  <button className="btn btn-link p-0 text-decoration-none small text-warning fw-bold" onClick={() => handleSetDefaultAddress(addr.ma_dia_chi)}>
+                                    Đặt làm mặc định
+                                  </button>
+                                )}
+                                <button className="btn btn-link p-0 text-decoration-none small text-danger fw-bold" onClick={() => handleDeleteAddress(addr.ma_dia_chi)}>
+                                  Xóa
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-5 bg-light rounded border border-dashed">
+                    <i className="bi bi-geo-alt display-1 text-muted opacity-25"></i>
+                    <p className="text-muted mt-3">Bạn chưa có địa chỉ giao hàng nào.</p>
+                    <button className="btn btn-yellow fw-bold" onClick={() => setIsMapOpen(true)}>
+                      Thêm địa chỉ ngay
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -591,6 +744,12 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
         </div>
       )}
 
+      {/* Map Picker Modal */}
+      <MapPickerModal 
+        isOpen={isMapOpen} 
+        onClose={() => setIsMapOpen(false)} 
+        onConfirm={handleMapConfirm}
+      />
     </div>
   );
 };
