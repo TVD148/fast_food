@@ -169,8 +169,18 @@ const Header = ({ onLoginClick, onNavigate }) => {
                     </span>
                   )}
                 </li>
-                {/* Nút Quầy Thu Ngân - chỉ hiện với nhân viên / quản trị */}
-                {(currentUser?.vai_tro === 'nhan_vien' || currentUser?.vai_tro === 'quan_tri') && (
+                {/* Nút Dashboard - Phân biệt Admin và Nhân viên */}
+                {currentUser?.vai_tro === 'quan_tri' && (
+                  <li>
+                    <button
+                      className="dropdown-item fw-semibold py-2 text-warning"
+                      onClick={() => onNavigate('admin')}
+                    >
+                      <i className="bi bi-shield-lock me-2"></i>Trang Quản Trị
+                    </button>
+                  </li>
+                )}
+                {currentUser?.vai_tro === 'nhan_vien' && (
                   <li>
                     <button
                       className="dropdown-item fw-semibold py-2 text-warning"
