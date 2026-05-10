@@ -78,6 +78,8 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
     localStorage.removeItem('token');
+    localStorage.removeItem('currentPageState');
+    localStorage.removeItem('forceCustomer');
     // Đăng xuất từ Firebase (nếu là user Firebase)
     signOut(auth).catch(error => console.error("Firebase signout error:", error));
     

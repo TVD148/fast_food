@@ -25,16 +25,36 @@ function App() {
   // State for UI
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [pageState, setPageState] = useState({ page: 'home', profileTab: 'info' });
-  const [forceCustomer, setForceCustomer] = useState(false);
+  
+  // Khởi tạo state từ localStorage nếu có
+  const [pageState, setPageState] = useState(() => {
+    const saved = localStorage.getItem('currentPageState');
+    return saved ? JSON.parse(saved) : { page: 'home', profileTab: 'info' };
+  });
+
+  const [forceCustomer, setForceCustomer] = useState(() => {
+    return localStorage.getItem('forceCustomer') === 'true';
+  });
+
   const { currentUser } = useAuth();
+
+  // Đồng bộ forceCustomer vào localStorage
+  useEffect(() => {
+    localStorage.setItem('forceCustomer', forceCustomer);
+  }, [forceCustomer]);
+
+  // Đồng bộ pageState vào localStorage
+  useEffect(() => {
+    localStorage.setItem('currentPageState', JSON.stringify(pageState));
+  }, [pageState]);
 
   const navigateTo = (page, profileTab = 'info') => {
     if (page === 'admin') {
       setForceCustomer(false); // quay lại trang admin
       return;
     }
-    setPageState({ page, profileTab });
+    const newPageState = { page, profileTab };
+    setPageState(newPageState);
     window.scrollTo(0, 0); // Scroll to top on page change
   };
 
