@@ -8,7 +8,8 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Import Routes
 const monAnRoutes = require('./routes/monAnRoutes');
@@ -17,6 +18,8 @@ const gioHangRoutes = require('./routes/gioHangRoutes');
 const donHangRoutes = require('./routes/donHangRoutes');
 const danhGiaRoutes = require('./routes/danhGiaRoutes');
 const danhMucRoutes = require('./routes/danhMucRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const diaChiRoutes = require('./routes/diaChiRoutes');
 
 // Khai báo đường dẫn API gốc
 app.use('/api/mon-an', monAnRoutes);
@@ -25,6 +28,8 @@ app.use('/api/gio-hang', gioHangRoutes);
 app.use('/api/don-hang', donHangRoutes);
 app.use('/api/danh-gia', danhGiaRoutes);
 app.use('/api/danh-muc', danhMucRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/dia-chi', diaChiRoutes);
 
 // --- PHẦN PHỤC VỤ FRONTEND ---
 // Serve folder 'public' (Sau khi bạn copy nội dung folder dist của frontend vào đây)

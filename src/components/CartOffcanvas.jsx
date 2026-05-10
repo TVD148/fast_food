@@ -1,8 +1,23 @@
 import React from 'react';
 import { useCart } from '../contexts/CartContext';
 
-const CartOffcanvas = ({ onCheckoutClick }) => {
+const CartOffcanvas = ({ onCheckoutClick, onNavigate }) => {
   const { isCartOpen, closeCart, cartItems, removeFromCart, updateQuantity, getCartTotal } = useCart();
+
+  const handleExploreMenu = () => {
+    closeCart();
+    // Chuyển về trang chủ trước
+    if (onNavigate) onNavigate('home');
+    
+    // Đợi một chút để trang home render xong rồi mới scroll
+    setTimeout(() => {
+      const elem = document.getElementById('thuc-don');
+      if (elem) {
+        const offset = elem.getBoundingClientRect().top + window.scrollY - 80;
+        window.scrollTo({ top: offset, behavior: 'smooth' });
+      }
+    }, 300);
+  };
 
   const handleCheckoutBtnClick = () => {
     closeCart(); // Đóng thanh menu giỏ hàng
@@ -38,7 +53,7 @@ const CartOffcanvas = ({ onCheckoutClick }) => {
             <div className="text-center my-auto py-5">
               <i className="bi bi-basket2 text-muted" style={{ fontSize: '4rem' }}></i>
               <p className="mt-3 text-muted">Giỏ hàng đang trống.</p>
-              <button className="btn btn-yellow mt-2" onClick={() => { closeCart(); setTimeout(() => { const elem = document.getElementById('thuc-don'); if (elem) { const offset = elem.getBoundingClientRect().top + window.scrollY - 80; window.scrollTo({ top: offset, behavior: 'smooth' }); } }, 300); }}>Khám phá thực đơn</button>
+              <button className="btn btn-yellow mt-2" onClick={handleExploreMenu}>Khám phá thực đơn</button>
             </div>
           ) : (
             <div className="flex-grow-1 overflow-auto">

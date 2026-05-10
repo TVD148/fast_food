@@ -83,8 +83,8 @@ const CategoryList = () => {
     <div className="container py-4 position-relative px-4 px-md-5">
       {/* Nút mũi tên trái */}
       <button 
-        className="btn btn-outline-warning rounded-circle d-none d-md-flex justify-content-center align-items-center position-absolute top-50 start-0 translate-middle-y z-1 bg-white shadow-sm" 
-        style={{width: '40px', height: '40px', color: '#ffc107', marginLeft: '5px'}}
+        className="btn category-nav-btn rounded-circle d-none d-md-flex justify-content-center align-items-center position-absolute top-50 start-0 translate-middle-y z-1 bg-white shadow-sm" 
+        style={{width: '40px', height: '40px', marginLeft: '5px'}}
         onClick={scrollLeft}
       >
         <i className="bi bi-arrow-left"></i>
@@ -144,7 +144,7 @@ const CategoryList = () => {
 
       {/* Nút mũi tên phải */}
       <button 
-        className="btn btn-warning rounded-circle d-none d-md-flex justify-content-center align-items-center position-absolute top-50 end-0 translate-middle-y z-1 shadow-sm" 
+        className="btn category-nav-btn rounded-circle d-none d-md-flex justify-content-center align-items-center position-absolute top-50 end-0 translate-middle-y z-1 bg-white shadow-sm" 
         style={{width: '40px', height: '40px', marginRight: '5px'}}
         onClick={scrollRight}
       >
@@ -158,6 +158,19 @@ const CategoryList = () => {
         .hide-scrollbar {
           -ms-overflow-style: none; /* IE and Edge */
           scrollbar-width: none; /* Firefox */
+        }
+        .category-nav-btn {
+          border: 1px solid #ffc107;
+          color: #ffc107;
+          transition: all 0.2s;
+        }
+        .category-nav-btn:hover {
+          background: #fff8e1 !important;
+          color: #ffb300;
+        }
+        .category-nav-btn:active {
+          background: #ffc107 !important;
+          color: white !important;
         }
       `}</style>
     </div>

@@ -11,6 +11,9 @@ export const CartProvider = ({ children }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const { isLoggedIn } = useAuth();
 
+  // Kiểm tra có token JWT không (user đăng nhập email/password mới có)
+  const hasToken = () => !!localStorage.getItem('token');
+
   // Load cart from backend when logged in
   useEffect(() => {
     const fetchCart = async () => {
@@ -18,8 +21,11 @@ export const CartProvider = ({ children }) => {
         setCartItems([]);
         return;
       }
+      // Nếu là user Google/Apple (Firebase) thì không có JWT token -> dùng local
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
       try {
-        const token = localStorage.getItem('token');
         const res = await fetch(`${API_BASE_URL}/gio-hang`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -42,17 +48,17 @@ export const CartProvider = ({ children }) => {
     fetchCart();
   }, [isLoggedIn]);
 
-  const addToCart = async (product) => {
-    if (!isLoggedIn) {
-      // Guest mode: update local state only
+  const addToCart = async (product, quantity = 1) => {
+    // Nếu chưa đăng nhập hoặc là user Firebase (không có JWT) -> dùng local state
+    if (!isLoggedIn || !hasToken()) {
       setCartItems(prevItems => {
         const existingItem = prevItems.find(item => item.id === product.id);
         if (existingItem) {
           return prevItems.map(item => 
-            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+            item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
           );
         }
-        return [...prevItems, { ...product, quantity: 1 }];
+        return [...prevItems, { ...product, quantity: quantity }];
       });
       return;
     }
@@ -65,7 +71,7 @@ export const CartProvider = ({ children }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ma_mon_an: product.id, so_luong: 1 })
+        body: JSON.stringify({ ma_mon_an: product.id, so_luong: quantity })
       });
       const data = await res.json();
       if (data.success) {
@@ -73,10 +79,10 @@ export const CartProvider = ({ children }) => {
           const existingItem = prevItems.find(item => item.id === product.id);
           if (existingItem) {
             return prevItems.map(item => 
-              item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+              item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
             );
           }
-          return [...prevItems, { ...product, quantity: 1 }];
+          return [...prevItems, { ...product, quantity: quantity }];
         });
       } else {
         alert(data.message);
@@ -87,7 +93,7 @@ export const CartProvider = ({ children }) => {
   };
 
   const removeFromCart = async (productId) => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn || !hasToken()) {
       setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
       return;
     }
@@ -117,7 +123,7 @@ export const CartProvider = ({ children }) => {
       return;
     }
 
-    if (!isLoggedIn) {
+    if (!isLoggedIn || !hasToken()) {
       setCartItems(prevItems => 
         prevItems.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item)
       );

@@ -39,4 +39,31 @@ const optionalAuth = (req, res, next) => {
     next();
 };
 
-module.exports = { xacThucToken, optionalAuth };
+// Middleware kiểm tra quyền quản trị
+const kiemTraAdmin = (req, res, next) => {
+    if (!req.user || req.user.vai_tro !== 'quan_tri') {
+        return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập trang quản trị!' });
+    }
+    next();
+};
+
+// Middleware kiểm tra quyền nhân viên (nhân viên hoặc quản trị đều được)
+const xacThucNhanVien = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) {
+        return res.status(401).json({ success: false, message: 'Truy cập bị từ chối! Vui lòng đăng nhập.' });
+    }
+    const token = authHeader.split(' ')[1];
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.vai_tro !== 'nhan_vien' && decoded.vai_tro !== 'quan_tri') {
+            return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập tính năng này!' });
+        }
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return res.status(403).json({ success: false, message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn!' });
+    }
+};
+
+module.exports = { xacThucToken, optionalAuth, kiemTraAdmin, xacThucNhanVien };

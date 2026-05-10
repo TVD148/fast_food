@@ -1,22 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../apiConfig';
+import MapPickerModal from './MapPickerModal';
+import { useCart } from '../contexts/CartContext';
 
 const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
   const { currentUser, updateUser } = useAuth();
+  const { addToCart, toggleCart } = useCart();
   const [activeTab, setActiveTab] = useState(initialTab);
   
   // States
-  const [name, setName] = useState('');
+  const [hoDem, setHoDem] = useState('');
+  const [ten, setTen] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [avatar, setAvatar] = useState(null);
+
+  // Address Management States
+  const [addresses, setAddresses] = useState([]);
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState(null);
+  const [addressLoading, setAddressLoading] = useState(false);
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setMessage({ text: 'Ảnh đại diện quá lớn! Vui lòng chọn ảnh dưới 2MB.', type: 'error' });
+        e.target.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.onload = () => {
+          // Nén ảnh xuống tối đa 250x250
+          const MAX_WIDTH = 250;
+          const MAX_HEIGHT = 250;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Chuyển thành JPEG với chất lượng 80% (rất nhẹ, thường < 20KB)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          setAvatar(dataUrl);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   
   const [orders, setOrders] = useState([]);
+  const [expandedOrder, setExpandedOrder] = useState(null);
+  
+  // Review Modal State
+  const [reviewModal, setReviewModal] = useState({ isOpen: false, ma_mon_an: null, ten_mon: '', so_sao: 5, binh_luan: '' });
 
   // Sync initial tab if it changes from Parent
   useEffect(() => {
@@ -25,14 +85,26 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
 
   useEffect(() => {
     if (currentUser) {
-      setName(currentUser.name || currentUser.ho_ten || '');
+      const fullName = currentUser.name || currentUser.ho_ten || '';
+      const parts = fullName.trim().split(' ');
+      if (parts.length > 1) {
+        setTen(parts.pop());
+        setHoDem(parts.join(' '));
+      } else {
+        setTen(fullName);
+        setHoDem('');
+      }
       setEmail(currentUser.email || '');
       setPhone(currentUser.phone || currentUser.so_dien_thoai || '');
-      setAddress(currentUser.address || currentUser.dia_chi || '');
+      setAvatar(currentUser.hinh_anh || currentUser.avatar || null);
     }
   }, [currentUser]);
 
+  // Fetch addresses when tab changes
   useEffect(() => {
+    if (activeTab === 'address' && currentUser) {
+      fetchAddresses();
+    }
     if (activeTab === 'history' && currentUser) {
       const fetchHistory = async () => {
         try {
@@ -52,19 +124,165 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     }
   }, [activeTab, currentUser]);
 
+  const fetchAddresses = async () => {
+    setAddressLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/dia-chi`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) setAddresses(data.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAddressLoading(false);
+    }
+  };
+
+  const handleDeleteAddress = async (id) => {
+    if (!window.confirm('Bạn có muốn xóa địa chỉ này?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/dia-chi/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAddresses();
+        setMessage({ text: 'Đã xóa địa chỉ!', type: 'success' });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSetDefaultAddress = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/dia-chi/${id}/mac-dinh`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAddresses();
+        setMessage({ text: 'Đã cập nhật địa chỉ mặc định!', type: 'success' });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMapConfirm = async (locationData) => {
+    try {
+      const { address: addr, lat, lng } = locationData;
+      const token = localStorage.getItem('token');
+      
+      if (editingAddress) {
+        // Cập nhật địa chỉ cũ
+        const res = await fetch(`${API_BASE_URL}/dia-chi/${editingAddress.ma_dia_chi}`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ 
+            ten_goi_nho: editingAddress.ten_goi_nho, 
+            dia_chi_chi_tiet: addr,
+            kinh_do: lng,
+            vi_do: lat
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          fetchAddresses();
+          setMessage({ text: 'Đã cập nhật địa chỉ!', type: 'success' });
+        }
+      } else {
+        // Thêm mới
+        const res = await fetch(`${API_BASE_URL}/dia-chi`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ 
+            ten_goi_nho: 'Địa chỉ mới', 
+            dia_chi_chi_tiet: addr,
+            kinh_do: lng, 
+            vi_do: lat,
+            la_mac_dinh: addresses.length === 0
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          fetchAddresses();
+          setMessage({ text: 'Đã thêm địa chỉ mới!', type: 'success' });
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setEditingAddress(null);
+    }
+  };
+
+  const handleCancelOrder = async (id) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/don-hang/khach-hang-huy/${id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ text: data.message, type: 'success' });
+        // Refresh orders
+        const historyRes = await fetch(`${API_BASE_URL}/don-hang/lich-su`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const historyData = await historyRes.json();
+        if (historyData.success) setOrders(historyData.data);
+      } else {
+        setMessage({ text: data.message, type: 'error' });
+      }
+    } catch (err) {
+      setMessage({ text: 'Lỗi server khi hủy đơn', type: 'error' });
+    }
+  };
+
+  const handleReorder = async (order) => {
+    if (!order.chi_tiet) return;
+    
+    // Thêm từng món vào giỏ hàng
+    for (const item of order.chi_tiet) {
+      await addToCart({
+        id: item.ma_mon_an,
+        name: item.ten_mon,
+        price: Number(item.gia_luc_mua),
+        img: item.hinh_anh
+      }, item.so_luong);
+    }
+    
+    // Mở giỏ hàng sau khi thêm xong
+    toggleCart();
+  };
+
   // Removed reservations fetch logic
 
     const handleSaveInfo = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
+      const fullName = `${hoDem} ${ten}`.trim();
       const res = await fetch(`${API_BASE_URL}/auth/cap-nhat`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ho_ten: name, email, so_dien_thoai: phone, dia_chi: address })
+        body: JSON.stringify({ ho_ten: fullName, email, so_dien_thoai: phone, hinh_anh: avatar })
       });
       
       const contentType = res.headers.get("content-type");
@@ -83,6 +301,34 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     } catch (err) {
       console.error(err);
       setMessage({ text: `Lỗi kết nối hoặc Trình duyệt: ${err.message}`, type: 'error' });
+    }
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/danh-gia/tao-moi`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ma_mon_an: reviewModal.ma_mon_an,
+          so_sao: reviewModal.so_sao,
+          binh_luan: reviewModal.binh_luan
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Đánh giá thành công!');
+        setReviewModal({ isOpen: false, ma_mon_an: null, ten_mon: '', so_sao: 5, binh_luan: '' });
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      alert('Lỗi khi gửi đánh giá');
     }
   };
 
@@ -151,8 +397,12 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
         <div className="col-lg-3">
           <div className="bg-white rounded shadow-sm border p-3">
             <div className="text-center mb-4 mt-2 border-bottom pb-4">
-              <div className="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-2" style={{width: '90px', height: '90px'}}>
-                <i className="bi bi-person-fill text-muted" style={{fontSize: '3.5rem'}}></i>
+              <div className="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-2 overflow-hidden" style={{width: '90px', height: '90px'}}>
+                {avatar ? (
+                  <img src={avatar} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                ) : (
+                  <i className="bi bi-person-fill text-muted" style={{fontSize: '3.5rem'}}></i>
+                )}
               </div>
               <h5 className="fw-bold mb-1">{currentUser?.name || currentUser?.ho_ten || 'Khách hàng'}</h5>
               <small className="text-muted">{currentUser?.email || currentUser?.so_dien_thoai || 'Chưa cập nhật'}</small>
@@ -172,6 +422,13 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
               >
                 <i className="bi bi-clock-history me-2"></i>
                 Lịch sử đặt hàng
+              </button>
+              <button 
+                className={`nav-link text-start rounded px-3 py-2 ${activeTab === 'address' ? 'active bg-warning text-dark fw-bold border-warning' : 'text-dark border border-transparent hover-bg-light'}`}
+                onClick={() => setActiveTab('address')}
+              >
+                <i className="bi bi-geo-alt me-2"></i>
+                Địa chỉ giao hàng
               </button>
               <button 
                 className={`nav-link text-start rounded px-3 py-2 ${activeTab === 'password' ? 'active bg-warning text-dark fw-bold border-warning' : 'text-dark border border-transparent hover-bg-light'}`}
@@ -215,16 +472,30 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                   <div className="col-md-8">
                     <form onSubmit={handleSaveInfo}>
                       <div className="row g-4">
-                        <div className="col-12">
-                          <label className="form-label fw-semibold text-dark small">Họ và tên</label>
+                      <div className="row g-3">
+                        <div className="col-md-8">
+                          <label className="form-label fw-semibold text-dark small">Họ và tên đệm</label>
                           <input 
                             type="text" 
                             className="form-control bg-light" 
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            value={hoDem}
+                            onChange={(e) => setHoDem(e.target.value)}
+                            placeholder="Vinh"
                             required
                           />
                         </div>
+                        <div className="col-md-4">
+                          <label className="form-label fw-semibold text-dark small">Tên</label>
+                          <input 
+                            type="text" 
+                            className="form-control bg-light" 
+                            value={ten}
+                            onChange={(e) => setTen(e.target.value)}
+                            placeholder="Quang"
+                            required
+                          />
+                        </div>
+                      </div>
                         <div className="col-md-6">
                           <label className="form-label fw-semibold text-dark small">Số điện thoại</label>
                           <input 
@@ -245,16 +516,7 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                             placeholder="Chưa cập nhật"
                           />
                         </div>
-                        <div className="col-12">
-                          <label className="form-label fw-semibold text-dark small">Địa chỉ giao hàng mặc định</label>
-                          <textarea 
-                            className="form-control bg-light" 
-                            rows="3"
-                            value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            placeholder="Nhập địa chỉ của bạn"
-                          ></textarea>
-                        </div>
+                        {/* Address field removed from general info */}
                         
                         <div className="col-12 mt-4">
                           <button type="submit" className="btn btn-yellow fw-bold px-4 py-2">
@@ -267,13 +529,94 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                   <div className="col-md-4 d-none d-md-block border-start ps-4">
                     <p className="fw-semibold small text-muted mb-2">Avatar</p>
                     <div className="bg-light border text-center p-3 rounded mb-2">
-                        <div className="bg-secondary rounded-circle d-inline-flex justify-content-center align-items-center mb-3 text-white" style={{width: '100px', height: '100px'}}>
-                          <i className="bi bi-person-fill" style={{fontSize: '4rem'}}></i>
+                        <div className="bg-secondary rounded-circle d-inline-flex justify-content-center align-items-center mb-3 text-white shadow-sm overflow-hidden" style={{width: '120px', height: '120px'}}>
+                          {avatar ? (
+                            <img src={avatar} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                          ) : (
+                            <i className="bi bi-person-fill" style={{fontSize: '5rem'}}></i>
+                          )}
                         </div>
-                        <p className="small text-muted fst-italic mb-0">Chưa cập nhật</p>
+                        <div className="d-flex flex-column gap-2">
+                          <label className="btn btn-sm btn-yellow fw-bold">
+                            <i className="bi bi-camera me-1"></i> {avatar ? 'Đổi ảnh mới' : 'Tải ảnh lên'}
+                            <input type="file" accept="image/*" className="d-none" onChange={handleAvatarChange} />
+                          </label>
+                          {avatar && (
+                            <button className="btn btn-sm btn-outline-danger fw-bold" onClick={() => setAvatar(null)}>
+                              <i className="bi bi-trash me-1"></i> Xóa ảnh
+                            </button>
+                          )}
+                        </div>
+                        <p className="small text-muted mt-3 fst-italic">Nhấn "Lưu thông tin" sau khi đổi ảnh để xác nhận thay đổi.</p>
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* TAB QUẢN LÝ ĐỊA CHỈ */}
+            {activeTab === 'address' && (
+              <div className="fade-in">
+                <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                  <h4 className="fw-bold text-dark mb-0">ĐỊA CHỈ GIAO HÀNG</h4>
+                  <button className="btn btn-dark btn-sm fw-bold px-3 py-2 rounded-pill" onClick={() => setIsMapOpen(true)}>
+                    <i className="bi bi-plus-lg me-1"></i> Thêm địa chỉ
+                  </button>
+                </div>
+
+                {addressLoading ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-warning" role="status"></div>
+                    <p className="text-muted mt-2">Đang tải danh sách địa chỉ...</p>
+                  </div>
+                ) : addresses.length > 0 ? (
+                  <div className="row g-3">
+                    {addresses.map((addr) => (
+                      <div key={addr.ma_dia_chi} className="col-12">
+                        <div className={`card border ${addr.la_mac_dinh ? 'border-warning shadow-sm' : ''} p-3 position-relative`}>
+                          {addr.la_mac_dinh && (
+                            <span className="position-absolute top-0 end-0 bg-warning text-dark px-2 py-1 small fw-bold rounded-start" style={{fontSize: '10px'}}>
+                              MẶC ĐỊNH
+                            </span>
+                          )}
+                          <div className="d-flex align-items-start gap-3">
+                            <div className="bg-light rounded-circle p-2 text-warning fs-4">
+                              <i className={`bi ${addr.ten_goi_nho === 'Nhà' ? 'bi-house-fill' : addr.ten_goi_nho === 'Công ty' ? 'bi-briefcase-fill' : 'bi-geo-alt-fill'}`}></i>
+                            </div>
+                            <div className="flex-grow-1">
+                              <h6 className="fw-bold mb-1">{addr.ten_goi_nho}</h6>
+                              <p className="text-muted small mb-2">{addr.dia_chi_chi_tiet}</p>
+                              <div className="d-flex gap-3">
+                                {!addr.la_mac_dinh && (
+                                  <button className="btn btn-link p-0 text-decoration-none small text-warning fw-bold" onClick={() => handleSetDefaultAddress(addr.ma_dia_chi)}>
+                                    Đặt làm mặc định
+                                  </button>
+                                )}
+                                <button className="btn btn-link p-0 text-decoration-none small text-info fw-bold" onClick={() => {
+                                  setEditingAddress(addr);
+                                  setIsMapOpen(true);
+                                }}>
+                                  Sửa
+                                </button>
+                                <button className="btn btn-link p-0 text-decoration-none small text-danger fw-bold" onClick={() => handleDeleteAddress(addr.ma_dia_chi)}>
+                                  Xóa
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-5 bg-light rounded border border-dashed">
+                    <i className="bi bi-geo-alt display-1 text-muted opacity-25"></i>
+                    <p className="text-muted mt-3">Bạn chưa có địa chỉ giao hàng nào.</p>
+                    <button className="btn btn-yellow fw-bold" onClick={() => setIsMapOpen(true)}>
+                      Thêm địa chỉ ngay
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -289,18 +632,85 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
                         <th className="py-3">Ngày Đặt</th>
                         <th className="py-3">Tổng Tiền</th>
                         <th className="py-3">Trạng Thái</th>
+                        <th className="py-3">Hành động</th>
                       </tr>
                     </thead>
                     <tbody>
                       {orders.length > 0 ? (
-                        orders.map((order, idx) => (
-                          <tr key={idx}>
+                        orders.map((order, idx) => {
+                          const orderTime = new Date(order.ngay_dat);
+                          const diffMins = (new Date() - orderTime) / 60000;
+                          const canCancel = order.trang_thai === 'cho_duyet' && diffMins <= 5;
+                          return (
+                          <React.Fragment key={idx}>
+                          <tr>
                             <td className="fw-bold text-dark small">#ORD-{order.ma_don_hang}</td>
-                            <td>{new Date(order.ngay_dat).toLocaleDateString('vi-VN')}</td>
+                            <td>{orderTime.toLocaleDateString('vi-VN')} {orderTime.toLocaleTimeString('vi-VN')}</td>
                             <td className="text-danger fw-semibold">{Number(order.tong_tien).toLocaleString('vi-VN')} đ</td>
                             <td><span className={`badge rounded-pill ${getStatusBadgeClass(order.trang_thai)} px-3 py-2`}>{getStatusText(order.trang_thai)}</span></td>
+                            <td>
+                              {canCancel && (
+                                <button className="btn btn-sm btn-outline-danger rounded-pill" onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.ma_don_hang); }}>
+                                  Hủy đơn
+                                </button>
+                              )}
+                              <button 
+                                className="btn btn-sm btn-outline-secondary rounded-pill ms-2"
+                                onClick={() => setExpandedOrder(expandedOrder === order.ma_don_hang ? null : order.ma_don_hang)}
+                              >
+                                {expandedOrder === order.ma_don_hang ? 'Đóng' : 'Chi tiết'}
+                              </button>
+                            </td>
                           </tr>
-                        ))
+                          {expandedOrder === order.ma_don_hang && (
+                            <tr className="bg-light">
+                              <td colSpan="5">
+                                <div className="p-3 text-start">
+                                  <div className="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 className="fw-bold mb-0">Chi tiết đơn hàng #{order.ma_don_hang}</h6>
+                                    <button 
+                                      className="btn btn-sm btn-yellow fw-bold rounded-pill px-3 shadow-sm"
+                                      onClick={() => handleReorder(order)}
+                                    >
+                                      <i className="bi bi-arrow-repeat me-1"></i> Mua lại đơn này
+                                    </button>
+                                  </div>
+                                  {order.ma_giam_gia && (
+                                    <p className="small text-success mb-2">Đã áp dụng mã: {order.ma_giam_gia} (Giảm {Number(order.so_tien_giam).toLocaleString('vi-VN')} đ)</p>
+                                  )}
+                                  <div className="table-responsive">
+                                    <table className="table table-sm table-borderless align-middle">
+                                      <tbody>
+                                        {order.chi_tiet && order.chi_tiet.map((ct, idx2) => (
+                                          <tr key={idx2} className="border-bottom">
+                                            <td style={{width: '60px'}}>
+                                              <img src={ct.hinh_anh || 'https://via.placeholder.com/60'} alt={ct.ten_mon} style={{width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px'}} />
+                                            </td>
+                                            <td>
+                                              <p className="mb-0 fw-bold small">{ct.ten_mon}</p>
+                                              <p className="mb-0 small text-muted">{ct.so_luong} x {Number(ct.gia_luc_mua).toLocaleString('vi-VN')} đ</p>
+                                            </td>
+                                            <td className="text-end">
+                                              {order.trang_thai === 'hoan_thanh' && (
+                                                <button 
+                                                  className="btn btn-sm btn-warning rounded-pill py-0 px-3"
+                                                  onClick={() => setReviewModal({ isOpen: true, ma_mon_an: ct.ma_mon_an, ten_mon: ct.ten_mon, so_sao: 5, binh_luan: '' })}
+                                                >
+                                                  Đánh giá
+                                                </button>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </React.Fragment>
+                        )})
                       ) : (
                         <tr>
                           <td colSpan="4" className="text-muted py-5 text-center">
@@ -374,6 +784,65 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
           </div>
         </div>
       </div>
+      {reviewModal.isOpen && (
+        <div className="modal-backdrop fade show" style={{ zIndex: 1055 }}></div>
+      )}
+      {reviewModal.isOpen && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 rounded-4 shadow-lg">
+              <div className="modal-header bg-dark-custom text-white border-0 py-3">
+                <h5 className="modal-title font-serif fw-bold text-yellow">
+                  Đánh giá: {reviewModal.ten_mon}
+                </h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setReviewModal({ ...reviewModal, isOpen: false })}></button>
+              </div>
+              <div className="modal-body p-4">
+                <form onSubmit={handleReviewSubmit}>
+                  <div className="mb-3 text-center">
+                    <label className="form-label fw-bold d-block">Chất lượng món ăn</label>
+                    <div className="d-flex justify-content-center gap-2 fs-2 text-warning">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <i 
+                          key={star} 
+                          className={star <= reviewModal.so_sao ? "bi bi-star-fill" : "bi bi-star"}
+                          style={{cursor: 'pointer'}}
+                          onClick={() => setReviewModal({...reviewModal, so_sao: star})}
+                        ></i>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label fw-bold small">Nhận xét của bạn (Tùy chọn)</label>
+                    <textarea 
+                      className="form-control bg-light" 
+                      rows="3" 
+                      placeholder="Chia sẻ cảm nhận của bạn về món ăn..."
+                      value={reviewModal.binh_luan}
+                      onChange={(e) => setReviewModal({...reviewModal, binh_luan: e.target.value})}
+                    ></textarea>
+                  </div>
+                  <button type="submit" className="btn btn-warning w-100 fw-bold rounded-pill py-2 shadow-sm">
+                    Gửi Đánh Giá
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Map Picker Modal */}
+      <MapPickerModal 
+        isOpen={isMapOpen} 
+        onClose={() => {
+          setIsMapOpen(false);
+          setEditingAddress(null);
+        }} 
+        onConfirm={handleMapConfirm}
+        initialAddress={editingAddress?.dia_chi_chi_tiet}
+        initialPosition={editingAddress ? [editingAddress.vi_do, editingAddress.kinh_do] : null}
+      />
     </div>
   );
 };

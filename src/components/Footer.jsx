@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Footer = () => {
+const Footer = ({ onNavigate }) => {
   return (
     <>
       {/* Footer Chính */}
@@ -9,15 +9,21 @@ const Footer = () => {
           <div className="row g-4 mb-5">
             {/* Cột 1: Thông tin */}
             <div className="col-lg-4 pe-lg-5">
-              <div className="d-flex align-items-center gap-2 mb-3">
+              <div className="d-flex align-items-center gap-2 mb-3" style={{cursor: 'pointer'}} onClick={() => onNavigate('home')}>
                 <i className="bi bi-yelp text-green fs-3"></i>
                 <h4 className="mb-0 text-yellow font-serif fst-italic">FAST FOOD STORE</h4>
               </div>
              <h6 className="fw-bold mb-4">Liên Hệ Với Chúng Tôi</h6>
               <ul className="list-unstyled text-secondary small">
-                <li className="mb-2"><i className="bi bi-telephone text-yellow me-2"></i> (001) 123 456 789</li>
-                <li className="mb-2"><i className="bi bi-envelope text-yellow me-2"></i> hello@gmail.com</li>
-                <li><i className="bi bi-geo-alt text-yellow me-2"></i> 5241 Elgin St. Celina, 10258</li>
+                <li className="mb-2" style={{cursor: 'pointer'}} onClick={() => { onNavigate('about'); setTimeout(() => document.getElementById('lien-he-chi-tiet')?.scrollIntoView({behavior:'smooth'}), 100); }}>
+                  <i className="bi bi-telephone text-yellow me-2"></i> 1900 123 456
+                </li>
+                <li className="mb-2" style={{cursor: 'pointer'}} onClick={() => onNavigate('about')}>
+                  <i className="bi bi-envelope text-yellow me-2"></i> hello@foodlover.com
+                </li>
+                <li style={{cursor: 'pointer'}} onClick={() => onNavigate('about')}>
+                  <i className="bi bi-geo-alt text-yellow me-2"></i> 123 Tên Lửa, TP. HCM
+                </li>
               </ul>
             </div>
 
@@ -52,9 +58,9 @@ const Footer = () => {
                 </button>
               </div>
               <div className="d-flex gap-2">
-                <a href="#" className="btn btn-warning rounded-circle btn-sm"><i className="bi bi-facebook"></i></a>
-                <a href="#" className="btn btn-outline-secondary rounded-circle btn-sm text-white"><i className="bi bi-twitter"></i></a>
-                <a href="#" className="btn btn-outline-secondary rounded-circle btn-sm text-white"><i className="bi bi-instagram"></i></a>
+                <a href="#" className="btn btn-warning rounded-circle btn-sm shadow-sm" title="Facebook"><i className="bi bi-facebook text-dark"></i></a>
+                <a href="#" className="btn btn-outline-secondary rounded-circle btn-sm text-white border-secondary shadow-sm" title="TikTok"><i className="bi bi-tiktok"></i></a>
+                <a href="#" className="btn btn-outline-secondary rounded-circle btn-sm text-white border-secondary shadow-sm" title="YouTube"><i className="bi bi-youtube"></i></a>
               </div>
             </div>
           </div>

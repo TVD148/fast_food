@@ -78,8 +78,13 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
     localStorage.removeItem('token');
+    localStorage.removeItem('currentPageState');
+    localStorage.removeItem('forceCustomer');
     // Đăng xuất từ Firebase (nếu là user Firebase)
     signOut(auth).catch(error => console.error("Firebase signout error:", error));
+    
+    // Chuyển hướng về trang chủ và tải lại trang để làm sạch toàn bộ state
+    window.location.href = '/';
   };
 
   // Gửi mã OTP qua email

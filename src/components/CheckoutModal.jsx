@@ -3,6 +3,7 @@ import { useCart } from '../contexts/CartContext';
 import { API_BASE_URL } from '../apiConfig';
 import qrBankImg from '../assets/qr_bank.png';
 import { useAuth } from '../contexts/AuthContext';
+import MapPickerModal from './MapPickerModal';
 
 const CheckoutModal = ({ isOpen, onClose }) => {
   const { cartItems, getCartTotal, closeCart, clearCart } = useCart();
@@ -13,29 +14,88 @@ const CheckoutModal = ({ isOpen, onClose }) => {
     name: '',
     phone: '',
     address: '',
+    lat: null,
+    lng: null,
     note: '',
-    paymentMethod: 'cash' // Changed from 'tien_mat' in UI mapping previously, but backend maps it anyway? Wait, backend needs 'tien_mat', we should send 'tien_mat'. I'll map it to DB ENUM later.
+    paymentMethod: 'cash'
   });
+
+  const [voucherCode, setVoucherCode] = useState('');
+  const [discountData, setDiscountData] = useState(null);
+  const [voucherMessage, setVoucherMessage] = useState({ text: '', type: '' });
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
 
   React.useEffect(() => {
     if (isOpen && currentUser) {
+      // Load info
       setFormData(prev => ({
         ...prev,
         name: currentUser.name || currentUser.ho_ten || '',
-        phone: currentUser.phone || currentUser.so_dien_thoai || '',
-        address: currentUser.address || currentUser.dia_chi || ''
+        phone: currentUser.phone || currentUser.so_dien_thoai || ''
       }));
+
+      // Fetch saved addresses
+      const fetchAddresses = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch(`${API_BASE_URL}/dia-chi`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.success && data.data.length > 0) {
+            setSavedAddresses(data.data);
+            const defaultAddr = data.data.find(a => a.la_mac_dinh) || data.data[0];
+            setFormData(prev => ({ 
+              ...prev, 
+              address: defaultAddr.dia_chi_chi_tiet,
+              lat: defaultAddr.vi_do,
+              lng: defaultAddr.kinh_do
+            }));
+          }
+        } catch (err) { console.error(err); }
+      };
+      fetchAddresses();
     }
   }, [isOpen, currentUser]);
   
   // step: 'form' | 'qr' | 'success'
   const [step, setStep] = useState('form');
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   if (!isOpen) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setVoucherMessage({ text: 'Đang kiểm tra...', type: 'info' });
+    try {
+      const res = await fetch(`${API_BASE_URL}/don-hang/kiem-tra-ma`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ma_giam_gia: voucherCode, tong_tien: getCartTotal() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDiscountData(data.data);
+        setVoucherMessage({ text: data.message, type: 'success' });
+      } else {
+        setDiscountData(null);
+        setVoucherMessage({ text: data.message, type: 'error' });
+      }
+    } catch (err) {
+      setVoucherMessage({ text: 'Lỗi kiểm tra mã giảm giá', type: 'error' });
+    }
+  };
+
+  const getFinalTotal = () => {
+    const base = getCartTotal();
+    const discount = discountData ? discountData.so_tien_giam : 0;
+    return Math.max(base - discount, 0);
   };
 
   const handleSubmit = (e) => {
@@ -59,9 +119,12 @@ const CheckoutModal = ({ isOpen, onClose }) => {
       const payload = {
         ho_ten_nguoi_nhan: formData.name,
         dia_chi_giao_hang: formData.address,
+        kinh_do: formData.lng,
+        vi_do: formData.lat,
         so_dien_thoai_giao: formData.phone,
         ghi_chu: formData.note,
         phuong_thuc_thanh_toan: dbPaymentMethod,
+        ma_giam_gia: discountData ? discountData.ma_code : null,
         san_pham: cartItems.map(item => ({ ma_mon_an: item.id, so_luong: item.quantity }))
       };
       
@@ -106,6 +169,9 @@ const CheckoutModal = ({ isOpen, onClose }) => {
   const resetAndClose = () => {
     setStep('form');
     setFormData({ name: '', phone: '', address: '', note: '', paymentMethod: 'cash' });
+    setVoucherCode('');
+    setDiscountData(null);
+    setVoucherMessage({ text: '', type: '' });
     onClose();
   };
 
@@ -168,21 +234,16 @@ const CheckoutModal = ({ isOpen, onClose }) => {
               {step === 'qr' && (
                 <div className="text-center py-5 px-4">
                   <div className="mb-3">
-                    <span 
-                      className="badge rounded-pill px-3 py-2 fs-6"
-                      style={{ 
-                        backgroundColor: formData.paymentMethod === 'momo' ? '#d63384' : '#0d6efd',
-                        color: '#fff'
-                      }}
-                    >
-                      <i className={`bi ${formData.paymentMethod === 'momo' ? 'bi-wallet' : 'bi-credit-card-2-front'} me-2`}></i>
-                      Thanh toán qua {formData.paymentMethod === 'momo' ? 'MoMo' : 'Ngân hàng'}
-                    </span>
+                    <img 
+                      src={formData.paymentMethod === 'momo' ? 'https://upload.wikimedia.org/wikipedia/vi/f/fe/MoMo_Logo.png' : 'https://vnpay.vn/s1/statics.vnpay.vn/2023/9/06ncktiwd6dc1694418189874.png'} 
+                      alt="Payment Gateway" 
+                      style={{ height: '40px', objectFit: 'contain' }}
+                    />
                   </div>
 
-                  <h4 className="fw-bold font-serif mb-2">Quét mã QR để thanh toán</h4>
+                  <h4 className="fw-bold font-serif mb-2">Cổng thanh toán giả lập</h4>
                   <p className="text-secondary mb-4">
-                    Số tiền: <strong className="text-danger fs-5">{getCartTotal().toLocaleString('vi-VN')} VNĐ</strong>
+                    Số tiền cần thanh toán: <strong className="text-danger fs-5">{getFinalTotal().toLocaleString('vi-VN')} VNĐ</strong>
                   </p>
 
                   <div 
@@ -258,7 +319,51 @@ const CheckoutModal = ({ isOpen, onClose }) => {
                         />
                       </div>
                       <div className="mb-3">
-                        <label className="form-label small text-secondary">Địa chỉ nhận hàng (*)</label>
+                        <div className="d-flex justify-content-between align-items-end mb-1">
+                          <label className="form-label small text-secondary mb-0">Địa chỉ nhận hàng (*)</label>
+                          <div className="d-flex gap-3">
+                            {savedAddresses.length > 0 && (
+                              <button 
+                                type="button" 
+                                className="btn btn-sm text-warning d-flex align-items-center gap-1 p-0 fw-bold"
+                                onClick={() => setShowAddressPicker(!showAddressPicker)}
+                              >
+                                <i className="bi bi-journal-text"></i> Sổ địa chỉ
+                              </button>
+                            )}
+                            <button 
+                              type="button" 
+                              className="btn btn-sm text-danger d-flex align-items-center gap-1 p-0 fw-semibold"
+                              onClick={() => setIsMapOpen(true)}
+                              title="Chọn vị trí trên bản đồ"
+                            >
+                              <i className="bi bi-geo-alt-fill"></i> Chọn trên bản đồ
+                            </button>
+                          </div>
+                        </div>
+
+                        {showAddressPicker && savedAddresses.length > 0 && (
+                          <div className="bg-light border rounded p-2 mb-2 fade-in" style={{maxHeight: '150px', overflowY: 'auto'}}>
+                            {savedAddresses.map(addr => (
+                              <div 
+                                key={addr.ma_dia_chi} 
+                                className="p-2 border-bottom hover-bg-white cursor-pointer small"
+                                onClick={() => {
+                                  setFormData(prev => ({ 
+                                    ...prev, 
+                                    address: addr.dia_chi_chi_tiet,
+                                    lat: addr.vi_do,
+                                    lng: addr.kinh_do
+                                  }));
+                                  setShowAddressPicker(false);
+                                }}
+                              >
+                                <div className="fw-bold text-dark">{addr.ten_goi_nho} {addr.la_mac_dinh && <span className="badge bg-warning text-dark ms-1">Mặc định</span>}</div>
+                                <div className="text-muted">{addr.dia_chi_chi_tiet}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <textarea 
                           className="form-control" rows="2" name="address"
                           value={formData.address} onChange={handleChange}
@@ -344,9 +449,35 @@ const CheckoutModal = ({ isOpen, onClose }) => {
                       <span>Phí giao hàng:</span>
                       <span className="fw-semibold text-dark">Miễn phí</span>
                     </div>
+
+                    <div className="mt-3 mb-2">
+                      <div className="input-group input-group-sm">
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          placeholder="Nhập mã giảm giá" 
+                          value={voucherCode}
+                          onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                        />
+                        <button className="btn btn-dark" type="button" onClick={handleApplyVoucher}>Áp dụng</button>
+                      </div>
+                      {voucherMessage.text && (
+                        <div className={`small mt-1 ${voucherMessage.type === 'success' ? 'text-success' : 'text-danger'}`}>
+                          {voucherMessage.text}
+                        </div>
+                      )}
+                    </div>
+
+                    {discountData && (
+                      <div className="d-flex justify-content-between mb-2 text-success">
+                        <span>Mã giảm giá ({discountData.ma_code}):</span>
+                        <span className="fw-semibold">- {discountData.so_tien_giam.toLocaleString('vi-VN')} đ</span>
+                      </div>
+                    )}
+
                     <div className="d-flex justify-content-between mt-3 pt-3 border-top">
                       <span className="fw-bold fs-5">Tổng cộng:</span>
-                      <span className="fw-bold fs-5 text-danger">{getCartTotal().toLocaleString('vi-VN')} đ</span>
+                      <span className="fw-bold fs-5 text-danger">{getFinalTotal().toLocaleString('vi-VN')} đ</span>
                     </div>
                   </div>
                 </div>
@@ -356,8 +487,16 @@ const CheckoutModal = ({ isOpen, onClose }) => {
           </div>
         </div>
       </div>
+
+      <MapPickerModal 
+        isOpen={isMapOpen} 
+        onClose={() => setIsMapOpen(false)} 
+        onConfirm={(data) => setFormData(prev => ({ ...prev, address: data.address, lat: data.lat, lng: data.lng }))} 
+        initialAddress={formData.address}
+      />
     </>
   );
 };
 
 export default CheckoutModal;
+

@@ -5,8 +5,19 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Header = ({ onLoginClick, onNavigate }) => {
   const { getCartCount, toggleCart } = useCart();
-  const { searchQuery, setSearchQuery, setCategoryFilter, isSearchOpen, toggleSearch } = useSearch();
+  const { searchQuery, setSearchQuery, setCategoryFilter, isSearchOpen, toggleSearch, suggestions } = useSearch();
   const { currentUser, isLoggedIn, logout } = useAuth();
+  const [isBouncing, setIsBouncing] = React.useState(false);
+
+  // Hiệu ứng nảy giỏ hàng khi có món mới
+  const count = getCartCount();
+  React.useEffect(() => {
+    if (count > 0) {
+      setIsBouncing(true);
+      const timer = setTimeout(() => setIsBouncing(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [count]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -52,7 +63,7 @@ const Header = ({ onLoginClick, onNavigate }) => {
     <header className="bg-dark-custom text-white py-3 sticky-top shadow-sm" style={{ zIndex: 1040 }}>
       <div className="container d-flex justify-content-between align-items-center">
         {/* Logo */}
-        <div className="d-flex align-items-center gap-2" style={{cursor: 'pointer'}}>
+        <div className="d-flex align-items-center gap-2" style={{cursor: 'pointer'}} onClick={() => onNavigate('home')}>
           <i className="bi bi-yelp text-green fs-3"></i>
           <h4 className="mb-0 text-yellow font-serif fst-italic">FAST FOOD</h4>
         </div>
@@ -61,33 +72,56 @@ const Header = ({ onLoginClick, onNavigate }) => {
         {!isSearchOpen && (
           <nav className="d-none d-lg-flex gap-4 fade-in align-items-center">
             <a href="#trang-chu" onClick={(e) => handleNavClick(e, 'trang-chu')} className="text-white text-decoration-none hover-yellow fw-semibold">Trang Chủ</a>
-            <a href="#ve-chung-toi" onClick={(e) => handleNavClick(e, 've-chung-toi')} className="text-white text-decoration-none hover-yellow fw-semibold">Về Chúng Tôi</a>
+            <a href="#ve-chung-toi" onClick={(e) => { e.preventDefault(); onNavigate('about'); }} className="text-white text-decoration-none hover-yellow fw-semibold">Về Chúng Tôi</a>
             <a href="#thuc-don" onClick={(e) => handleNavClick(e, 'thuc-don')} className="text-white text-decoration-none hover-yellow fw-semibold">Thực Đơn</a>
-            <a href="#footer-lien-he" onClick={(e) => handleNavClick(e, 'footer-lien-he')} className="text-white text-decoration-none hover-yellow fw-semibold">Liên Hệ</a>
+            <a href="#lien-he" onClick={(e) => { e.preventDefault(); onNavigate('about'); setTimeout(() => { document.getElementById('lien-he-chi-tiet')?.scrollIntoView({ behavior: 'smooth' }); }, 100); }} className="text-white text-decoration-none hover-yellow fw-semibold">Liên Hệ</a>
           </nav>
         )}
 
         {/* Ô Tìm Kiếm */}
         {isSearchOpen && (
-          <form 
-            onSubmit={handleSearchSubmit} 
-            className="flex-grow-1 px-4 fade-in d-none d-md-block"
-            style={{ maxWidth: '500px' }}
-          >
-            <div className="input-group">
-              <input 
-                type="text" 
-                className="form-control rounded-start-pill py-2" 
-                placeholder="Tìm kiếm món ăn (VD: Burger, Pizza...)" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoFocus
-              />
-              <button type="submit" className="btn btn-yellow rounded-end-pill px-4">
-                Tìm
-              </button>
-            </div>
-          </form>
+          <div className="flex-grow-1 px-4 fade-in d-none d-md-block position-relative" style={{ maxWidth: '500px' }}>
+            <form onSubmit={handleSearchSubmit}>
+              <div className="input-group">
+                <input 
+                  type="text" 
+                  className="form-control rounded-start-pill py-2" 
+                  placeholder="Tìm kiếm món ăn..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                />
+                <button type="submit" className="btn btn-yellow rounded-end-pill px-4">
+                  Tìm
+                </button>
+              </div>
+            </form>
+
+            {/* Suggestions Dropdown */}
+            {suggestions.length > 0 && (
+              <div className="position-absolute w-100 bg-white shadow-lg rounded-3 mt-1 overflow-hidden" style={{ top: '100%', zIndex: 1050, left: 0, padding: '4px 16px' }}>
+                <div className="bg-white rounded-3 overflow-hidden border">
+                  {suggestions.map(p => (
+                    <div 
+                      key={p.ma_mon_an} 
+                      className="d-flex align-items-center gap-3 p-2 hover-light cursor-pointer border-bottom text-dark"
+                      onClick={() => {
+                        setSearchQuery(p.ten_mon);
+                        handleSearchSubmit({ preventDefault: () => {} });
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <img src={p.hinh_anh} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                      <div>
+                        <div className="fw-bold small">{p.ten_mon}</div>
+                        <div className="text-muted small">{Number(p.gia_ban).toLocaleString('vi-VN')}đ</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Icon & Button */}
@@ -99,7 +133,11 @@ const Header = ({ onLoginClick, onNavigate }) => {
             title="Tìm kiếm"
           ></i>
           
-          <div className="position-relative icon-hover" onClick={toggleCart} style={{cursor: 'pointer'}}>
+          <div 
+            className={`position-relative icon-hover ${isBouncing ? 'animate-bounce' : ''}`} 
+            onClick={toggleCart} 
+            style={{cursor: 'pointer'}}
+          >
             <i className="bi bi-bag text-white fs-5"></i>
             <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark shadow-sm">
               {getCartCount()}
@@ -124,7 +162,34 @@ const Header = ({ onLoginClick, onNavigate }) => {
                     <i className={`bi ${currentUser?.email ? 'bi-envelope' : 'bi-telephone'} me-1`}></i>
                     {currentUser?.email || currentUser?.so_dien_thoai || 'Chưa cập nhật'}
                   </div>
+                  {/* Badge vai trò */}
+                  {(currentUser?.vai_tro === 'nhan_vien' || currentUser?.vai_tro === 'quan_tri') && (
+                    <span className="badge bg-warning text-dark mt-1" style={{fontSize: '10px'}}>
+                      {currentUser?.vai_tro === 'quan_tri' ? '👑 Quản trị viên' : '🧾 Nhân viên'}
+                    </span>
+                  )}
                 </li>
+                {/* Nút Dashboard - Phân biệt Admin và Nhân viên */}
+                {currentUser?.vai_tro === 'quan_tri' && (
+                  <li>
+                    <button
+                      className="dropdown-item fw-semibold py-2 text-warning"
+                      onClick={() => onNavigate('admin')}
+                    >
+                      <i className="bi bi-shield-lock me-2"></i>Trang Quản Trị
+                    </button>
+                  </li>
+                )}
+                {currentUser?.vai_tro === 'nhan_vien' && (
+                  <li>
+                    <button
+                      className="dropdown-item fw-semibold py-2 text-warning"
+                      onClick={() => onNavigate('staff')}
+                    >
+                      <i className="bi bi-display me-2"></i>Quầy Thu Ngân
+                    </button>
+                  </li>
+                )}
                 <li>
                   <button className="dropdown-item fw-semibold py-2" onClick={() => onNavigate('profile', 'info')}>
                     <i className="bi bi-person-lines-fill me-2"></i>Thông tin tài khoản
@@ -143,6 +208,7 @@ const Header = ({ onLoginClick, onNavigate }) => {
                 </li>
               </ul>
             </div>
+
           ) : (
             <button 
               className="btn btn-yellow fw-bold" 
@@ -174,6 +240,15 @@ const Header = ({ onLoginClick, onNavigate }) => {
           </form>
         </div>
       )}
+      <style>{`
+        @keyframes bounce-custom {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.3); }
+        }
+        .animate-bounce {
+          animation: bounce-custom 0.5s ease-in-out;
+        }
+      `}</style>
     </header>
   );
 };
