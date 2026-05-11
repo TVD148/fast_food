@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_BASE_URL } from '../../apiConfig';
+import voucherService from '../../services/voucherService';
 import ConfirmDialog from './ConfirmDialog';
 
 const EMPTY_VOUCHER = { 
@@ -19,6 +19,7 @@ export default function AdminVouchers() {
     const [editItem, setEditItem] = useState(null);
     const [form, setForm] = useState(EMPTY_VOUCHER);
     const [saving, setSaving] = useState(false);
+    const [search, setSearch] = useState('');
     const [toast, setToast] = useState(null);
     const [confirmDialog, setConfirmDialog] = useState({ open: false, code: '' });
 
@@ -31,10 +32,7 @@ export default function AdminVouchers() {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_BASE_URL}/admin/ma-giam-gia`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
+            const data = await voucherService.getVouchers(token);
             if (data.success) setVouchers(data.data);
         } catch (err) {
             console.error(err);
@@ -71,22 +69,12 @@ export default function AdminVouchers() {
         }
 
         setSaving(true);
-        const token = localStorage.getItem('token');
-        const method = editItem ? 'PUT' : 'POST';
-        const url = editItem 
-            ? `${API_BASE_URL}/admin/ma-giam-gia/${editItem.ma_code}` 
-            : `${API_BASE_URL}/admin/ma-giam-gia`;
-        
         try {
-            const res = await fetch(url, {
-                method,
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    Authorization: `Bearer ${token}` 
-                },
-                body: JSON.stringify(form)
-            });
-            const data = await res.json();
+            const token = localStorage.getItem('token');
+            const data = editItem
+                ? await voucherService.updateVoucher(editItem.ma_code, form, token)
+                : await voucherService.createVoucher(form, token);
+                
             if (data.success) {
                 showToast(data.message);
                 setShowModal(false);
@@ -108,13 +96,9 @@ export default function AdminVouchers() {
     const handleConfirmDelete = async () => {
         const { code } = confirmDialog;
         setConfirmDialog({ open: false, code: '' });
-        const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`${API_BASE_URL}/admin/ma-giam-gia/${code}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
+            const token = localStorage.getItem('token');
+            const data = await voucherService.deleteVoucher(code, token);
             if (data.success) {
                 showToast(data.message);
                 fetchVouchers();
@@ -125,6 +109,10 @@ export default function AdminVouchers() {
             showToast('Lỗi khi xóa!', 'error');
         }
     };
+
+    const filtered = vouchers.filter(v => 
+        v.ma_code.toLowerCase().includes(search.toLowerCase())
+    );
 
     return (
         <div className="admin-section">
@@ -144,6 +132,11 @@ export default function AdminVouchers() {
                 <button className="btn-admin-primary" onClick={openAdd}>+ Tạo mã mới</button>
             </div>
 
+            <div className="admin-toolbar">
+                <input className="admin-search" placeholder="🔍 Tìm mã code..." value={search} onChange={e => setSearch(e.target.value)} />
+                <span className="admin-count">{filtered.length} mã</span>
+            </div>
+
             {loading ? <div className="admin-loading">⏳ Đang tải...</div> : (
                 <div className="admin-table-wrap">
                     <table className="admin-table">
@@ -160,7 +153,7 @@ export default function AdminVouchers() {
                             </tr>
                         </thead>
                         <tbody>
-                            {vouchers.map(v => (
+                            {filtered.map(v => (
                                 <tr key={v.ma_code}>
                                     <td><strong className="text-primary">{v.ma_code}</strong></td>
                                     <td>{v.phan_tram_giam}%</td>

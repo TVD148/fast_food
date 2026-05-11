@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import './admin/admin.css';
+import '../admin/admin.css';
 import './StaffDashboard.css';
-import { API_BASE_URL } from '../apiConfig';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../context/AuthContext';
+import staffService from '../../services/staffService';
 
 const POLLING_INTERVAL = 5000;
 
@@ -27,8 +27,6 @@ const Toast = ({ message, type, onClose }) => {
   useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t); }, [onClose]);
   return <div className={`staff-toast ${type}`}><span>{message}</span></div>;
 };
-
-// -- Shift Stats Bar -- (REMOVED)
 
 // ── Email Modal ────────────────────────────────────────────
 const EmailModal = ({ order, onClose, onSend, sending }) => {
@@ -170,8 +168,7 @@ const InventoryTab = ({ token, showToast }) => {
 
   const fetch_ = useCallback(async () => {
     try {
-      const r = await fetch(`${API_BASE_URL}/mon-an/nhan-vien/tat-ca`,{headers:{Authorization:`Bearer ${token}`}});
-      const d = await r.json();
+      const d = await staffService.getInventory(token);
       if (d.success) setMonAn(d.data);
     } catch { showToast('Không thể tải danh sách món!','error'); }
     finally { setLoading(false); }
@@ -182,8 +179,7 @@ const InventoryTab = ({ token, showToast }) => {
   const handleToggle = async (id, ten, trangThai) => {
     setToggling(id);
     try {
-      const r = await fetch(`${API_BASE_URL}/mon-an/${id}/trang-thai`,{method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'}});
-      const d = await r.json();
+      const d = await staffService.toggleProductStatus(id, token);
       if (d.success) {
         setMonAn(prev=>prev.map(m=>m.ma_mon_an===id?{...m,trang_thai:d.trang_thai_moi}:m));
         showToast(`"${ten}" ${d.trang_thai_moi==='con_hang'?'đã mở bán trở lại!':'đã ẩn khỏi menu!'}`, d.trang_thai_moi==='con_hang'?'success':'info');
@@ -246,8 +242,7 @@ const StaffDashboard = ({ user, onNavigateHome }) => {
   // Fetch shift stats
   const fetchStats = useCallback(async () => {
     try {
-      const r = await fetch(`${API_BASE_URL}/don-hang/nhan-vien/thong-ke-ca`,{headers:{Authorization:`Bearer ${token}`}});
-      const d = await r.json();
+      const d = await staffService.getShiftStats(token);
       if (d.success) setShiftStats(d.data);
     } catch {}
   }, [token]);
@@ -255,11 +250,11 @@ const StaffDashboard = ({ user, onNavigateHome }) => {
   // Fetch orders
   const fetchOrders = useCallback(async (isPolling=false) => {
     try {
-      const params = new URLSearchParams({ page, limit: 12 });
-      if (filterStatus !== 'tat_ca') params.append('trang_thai', filterStatus);
-      if (searchQ.trim()) params.append('tim_kiem', searchQ.trim());
-      const r = await fetch(`${API_BASE_URL}/don-hang/nhan-vien/don-hang?${params}`,{headers:{Authorization:`Bearer ${token}`}});
-      const d = await r.json();
+      const params = { page, limit: 12 };
+      if (filterStatus !== 'tat_ca') params.trang_thai = filterStatus;
+      if (searchQ.trim()) params.tim_kiem = searchQ.trim();
+      
+      const d = await staffService.getOrders(params, token);
       if (d.success) {
         if (isPolling && prevIds.current.size > 0) {
           const newIds = new Set(d.data.map(o=>o.ma_don_hang));
@@ -292,11 +287,7 @@ const StaffDashboard = ({ user, onNavigateHome }) => {
 
   const handleStatusChange = useCallback(async (orderId, newStatus) => {
     try {
-      const r = await fetch(`${API_BASE_URL}/don-hang/nhan-vien/${orderId}/trang-thai`,{
-        method:'PUT', headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-        body: JSON.stringify({trang_thai:newStatus})
-      });
-      const d = await r.json();
+      const d = await staffService.updateOrderStatus(orderId, newStatus, token);
       if (d.success) {
         setOrders(prev=>prev.map(o=>o.ma_don_hang===orderId?{...o,trang_thai:newStatus}:o));
         showToast(`${STATUS_CFG[newStatus]?.icon} Đơn #${orderId}: ${STATUS_CFG[newStatus]?.label}`, 'success');
@@ -308,11 +299,7 @@ const StaffDashboard = ({ user, onNavigateHome }) => {
   const handleSendEmail = async (email) => {
     setEmailSending(true);
     try {
-      const r = await fetch(`${API_BASE_URL}/don-hang/nhan-vien/${emailOrder.ma_don_hang}/gui-email`,{
-        method:'POST', headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-        body: JSON.stringify({email})
-      });
-      const d = await r.json();
+      const d = await staffService.sendInvoiceEmail(emailOrder.ma_don_hang, email, token);
       if (d.success) { showToast(d.message,'success'); setEmailOrder(null); setPrintOrder(null); }
       else showToast(d.message||'Lỗi gửi email!','error');
     } catch { showToast('Lỗi kết nối!','error'); }
@@ -320,11 +307,10 @@ const StaffDashboard = ({ user, onNavigateHome }) => {
   };
 
   const stats = shiftStats || {};
-  const pendingCount = (stats.cho_duyet||0)+(stats.dang_che_bien||0);
 
   const NAV_ITEMS = [
     { key: 'orders',    label: 'Đơn hàng',  icon: '📋' },
-    { key: 'inventory', label: 'Tồn kho',   icon: '🥗' },
+    { key: 'inventory', label: 'Menu',   icon: '🍔' },
   ];
 
   return (
@@ -399,7 +385,7 @@ const StaffDashboard = ({ user, onNavigateHome }) => {
                 </div>
               </div>
 
-              {/* Status Stats (Like Admin Dash) */}
+              {/* Status Stats */}
               <div className="stat-grid">
                 {Object.entries(STATUS_CFG).map(([k, cfg]) => (
                   <div 

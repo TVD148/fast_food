@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../apiConfig';
-import { useSearch } from '../contexts/SearchContext';
+import React from 'react';
+import { useSearch } from '../context/SearchContext';
+import productService from '../services/productService';
+
 const CategoryList = () => {
   const { categoryFilter, selectCategory, clearFilters } = useSearch();
   const scrollRef = React.useRef(null);
@@ -9,8 +10,7 @@ const CategoryList = () => {
   React.useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/danh-muc`);
-        const data = await response.json();
+        const data = await productService.getCategories();
         if (data.success) {
           const formattedCategories = data.data.map(cat => ({
             name: cat.ten_danh_muc,

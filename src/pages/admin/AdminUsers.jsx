@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_BASE_URL } from '../../apiConfig';
-import { useAuth } from '../../contexts/AuthContext';
+import adminUserService from '../../services/adminUserService';
+import { useAuth } from '../../context/AuthContext';
 import ConfirmDialog from './ConfirmDialog';
 
 const ROLE_MAP = {
@@ -36,12 +36,11 @@ export default function AdminUsers() {
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/nguoi-dung`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success) setUsers(data.data);
+        try {
+            const token = localStorage.getItem('token');
+            const data = await adminUserService.getUsers(token);
+            if (data.success) setUsers(data.data);
+        } catch (e) { console.error(e); }
         setLoading(false);
     }, []);
 
@@ -49,29 +48,24 @@ export default function AdminUsers() {
 
     // ─── Cập nhật vai trò ───
     const updateRole = async (id, role) => {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/nguoi-dung/${id}/vai-tro`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ vai_tro: role })
-        });
-        const data = await res.json();
-        if (data.success) { showToast(data.message); fetchUsers(); }
-        else showToast(data.message, 'error');
+        try {
+            const token = localStorage.getItem('token');
+            const data = await adminUserService.updateUserRole(id, role, token);
+            if (data.success) { showToast(data.message); fetchUsers(); }
+            else showToast(data.message, 'error');
+        } catch (e) { console.error(e); }
     };
 
     // ─── Xóa tài khoản ───
     const handleConfirmDelete = async () => {
         const { id } = deleteDialog;
         setDeleteDialog({ open: false, id: null, name: '' });
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/nguoi-dung/${id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success) { showToast(data.message); fetchUsers(); }
-        else showToast(data.message, 'error');
+        try {
+            const token = localStorage.getItem('token');
+            const data = await adminUserService.deleteUser(id, token);
+            if (data.success) { showToast(data.message); fetchUsers(); }
+            else showToast(data.message, 'error');
+        } catch (e) { console.error(e); }
     };
 
     // ─── Khóa / Mở khóa ───
@@ -82,15 +76,12 @@ export default function AdminUsers() {
     const handleConfirmLock = async () => {
         const { id, action, so_ngay } = lockDialog;
         setLockDialog({ open: false, id: null, name: '', action: 'bi_khoa', so_ngay: 1 });
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/nguoi-dung/${id}/trang-thai`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ trang_thai: action, so_ngay: parseInt(so_ngay) })
-        });
-        const data = await res.json();
-        if (data.success) { showToast(data.message); fetchUsers(); }
-        else showToast(data.message, 'error');
+        try {
+            const token = localStorage.getItem('token');
+            const data = await adminUserService.updateUserStatus(id, { trang_thai: action, so_ngay: parseInt(so_ngay) }, token);
+            if (data.success) { showToast(data.message); fetchUsers(); }
+            else showToast(data.message, 'error');
+        } catch (e) { console.error(e); }
     };
 
     // ─── Filter ───

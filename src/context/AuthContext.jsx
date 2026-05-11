@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { auth, googleProvider, appleProvider } from '../config/firebase';
+import { auth, googleProvider, appleProvider } from '../api/firebase';
 import { signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
-import { API_BASE_URL } from '../apiConfig';
+import { API_BASE_URL } from '../api/apiConfig';
+import authService from '../services/authService';
 
 const AuthContext = createContext();
 
@@ -38,15 +39,9 @@ export const AuthProvider = ({ children }) => {
   // Đăng ký tài khoản mới
   const register = async (name, email, password) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/dang-ky`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ho_ten: name, tai_khoan: email, mat_khau: password, xac_nhan_mat_khau: password })
-      });
-      const data = await res.json();
+      const data = await authService.register(name, email, password);
       return { success: data.success, message: data.message };
     } catch (error) {
-      console.error(error);
       return { success: false, message: 'Lỗi kết nối server' };
     }
   };
@@ -54,13 +49,7 @@ export const AuthProvider = ({ children }) => {
   // Đăng nhập
   const login = async (email, password) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/dang-nhap`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tai_khoan: email, mat_khau: password })
-      });
-      const data = await res.json();
-      
+      const data = await authService.login(email, password);
       if (data.success) {
         setCurrentUser(data.user);
         localStorage.setItem('currentUser', JSON.stringify(data.user));
@@ -68,7 +57,6 @@ export const AuthProvider = ({ children }) => {
       }
       return { success: data.success, message: data.message };
     } catch (error) {
-       console.error(error);
        return { success: false, message: 'Lỗi kết nối server' };
     }
   };
@@ -90,15 +78,9 @@ export const AuthProvider = ({ children }) => {
   // Gửi mã OTP qua email
   const sendOTP = async (email) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/quen-mat-khau`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await res.json();
+      const data = await authService.sendOTP(email);
       return { success: data.success, message: data.message };
     } catch (error) {
-      console.error(error);
       return { success: false, message: 'Lỗi kết nối server' };
     }
   };
@@ -106,15 +88,9 @@ export const AuthProvider = ({ children }) => {
   // Xác nhận mã OTP và đặt lại mật khẩu
   const verifyAndResetPassword = async (email, otp, newPassword) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/dat-lai-mat-khau`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, ma_xac_nhan: otp, mat_khau_moi: newPassword })
-      });
-      const data = await res.json();
+      const data = await authService.verifyAndResetPassword(email, otp, newPassword);
       return { success: data.success, message: data.message };
     } catch (error) {
-      console.error(error);
       return { success: false, message: 'Lỗi kết nối server' };
     }
   };

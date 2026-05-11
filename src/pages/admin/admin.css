@@ -843,3 +843,25 @@
   .stat-grid { grid-template-columns: 1fr 1fr; }
   .menu-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ===== TOP CUSTOMERS RANKING ===== */
+.rank-badge {
+    font-size: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #f8fafc;
+}
+
+.rank-1 { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #fbbf24; }
+.rank-2 { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); border: 2px solid #94a3b8; }
+.rank-3 { background: linear-gradient(135deg, #fff7ed, #ffedd5); border: 2px solid #fb923c; }
+
+@media (max-width: 600px) {
+    .stat-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}

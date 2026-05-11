@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { API_BASE_URL } from '../../apiConfig';
+import adminService from '../../services/adminService';
 
 const formatMoney = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
 const formatMoneyShort = (n) => {
@@ -8,21 +8,18 @@ const formatMoneyShort = (n) => {
     return String(n);
 };
 
-const STATUS_MAP = { cho_duyet: { label: 'Chờ duyệt', color: '#f59e0b', bg: '#fef3c7' }, dang_giao: { label: 'Đang giao', color: '#3b82f6', bg: '#dbeafe' }, hoan_thanh: { label: 'Hoàn thành', color: '#10b981', bg: '#d1fae5' }, da_huy: { label: 'Đã hủy', color: '#ef4444', bg: '#fee2e2' } };
-
-const STAT_CARDS = [
-    { key: 'tongDonHom', label: 'Đơn hôm nay', icon: '📦', gradient: 'linear-gradient(135deg, #f59e0b, #fbbf24)' },
-    { key: 'doanhThu', label: 'Doanh thu tổng', icon: '💰', gradient: 'linear-gradient(135deg, #10b981, #34d399)', isMoney: true },
-    { key: 'choDuyet', label: 'Chờ duyệt', icon: '⏳', gradient: 'linear-gradient(135deg, #ef4444, #f87171)' },
-    { key: 'tongMonAn', label: 'Tổng món ăn', icon: '🍔', gradient: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
-    { key: 'tongKhachHang', label: 'Khách hàng', icon: '👥', gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)' },
+const STAT_CARDS_CONFIG = [
+    { key: 'doanhThu', label: 'Tổng doanh thu', icon: '💰', gradient: 'linear-gradient(135deg, #10b981, #34d399)', isMoney: true },
     { key: 'tongDonHang', label: 'Tổng đơn hàng', icon: '🛒', gradient: 'linear-gradient(135deg, #ec4899, #f472b6)' },
+    { key: 'donHoanThanh', label: 'Đơn hoàn thành', icon: '✅', gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)' },
+    { key: 'donDaHuy', label: 'Đơn đã hủy', icon: '🚫', gradient: 'linear-gradient(135deg, #ef4444, #f87171)' },
+    { key: 'tongKhachHang', label: 'Khách đã mua', icon: '👤', gradient: 'linear-gradient(135deg, #f59e0b, #fbbf24)' },
 ];
 
 const CHART_TABS = [
     { key: '7ngay', label: '7 ngày' },
-    { key: '4tuan', label: '4 tuần' },
-    { key: '12thang', label: '12 tháng' },
+    { key: 'quy', label: 'Theo quý' },
+    { key: 'nam', label: 'Theo năm' },
 ];
 
 // ===== SVG LINE CHART COMPONENT =====
@@ -50,7 +47,6 @@ function LineChart({ data, chartTab }) {
     const revPoints = data.map((d, i) => `${xPos(i)},${yRevPos(parseFloat(d.doanh_thu) || 0)}`).join(' ');
     const ordPoints = data.map((d, i) => `${xPos(i)},${yOrdPos(parseInt(d.so_don) || 0)}`).join(' ');
 
-    // Smooth polyline path using bezier
     const makePath = (points) => {
         const pts = points.split(' ').map(p => p.split(',').map(Number));
         if (pts.length < 2) return `M${pts[0]?.join(',')}`;
@@ -67,7 +63,6 @@ function LineChart({ data, chartTab }) {
     const revPath = makePath(revPoints);
     const ordPath = makePath(ordPoints);
 
-    // Gradient area paths
     const makeAreaPath = (pts, yBottom) => {
         const p = pts.split(' ').map(p => p.split(',').map(Number));
         let d = `M${p[0].join(',')}`;
@@ -87,15 +82,14 @@ function LineChart({ data, chartTab }) {
     const formatLabel = (d) => {
         const date = new Date(d.ngay);
         if (chartTab === '7ngay') return `${date.getDate()}/${date.getMonth() + 1}`;
-        if (chartTab === '4tuan') return `T${date.getDate()}/${date.getMonth() + 1}`;
-        return `T${date.getMonth() + 1}`;
+        if (chartTab === 'quy') return `T${date.getDate()}/${date.getMonth() + 1}`;
+        return `Tháng ${date.getMonth() + 1}`;
     };
 
     const yGridLines = 4;
 
     return (
         <div style={{ position: 'relative' }}>
-            {/* Legend */}
             <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151' }}>
                     <span style={{ width: 20, height: 3, background: 'linear-gradient(90deg,#f59e0b,#f97316)', borderRadius: 2, display: 'inline-block' }}></span>
@@ -127,7 +121,6 @@ function LineChart({ data, chartTab }) {
                     </linearGradient>
                 </defs>
 
-                {/* Grid lines */}
                 {Array.from({ length: yGridLines + 1 }, (_, i) => {
                     const y = PAD.top + (innerH / yGridLines) * i;
                     const val = maxRev - (maxRev / yGridLines) * i;
@@ -141,30 +134,23 @@ function LineChart({ data, chartTab }) {
                     );
                 })}
 
-                {/* Area fills */}
                 <path d={revAreaPath} fill="url(#revGrad)" />
                 <path d={ordAreaPath} fill="url(#ordGrad)" />
 
-                {/* Lines */}
                 <path d={revPath} fill="none" stroke="url(#revLine)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 <path d={ordPath} fill="none" stroke="url(#ordLine)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6 3" />
 
-                {/* Dots + hover zones */}
                 {data.map((d, i) => {
                     const x = xPos(i);
                     const yR = yRevPos(parseFloat(d.doanh_thu) || 0);
                     const yO = yOrdPos(parseInt(d.so_don) || 0);
                     return (
                         <g key={i}>
-                            {/* Revenue dot */}
                             <circle cx={x} cy={yR} r="4" fill="#fff" stroke="#f97316" strokeWidth="2.5" />
-                            {/* Order dot */}
                             <circle cx={x} cy={yO} r="4" fill="#fff" stroke="#3b82f6" strokeWidth="2.5" />
-                            {/* X label */}
                             <text x={x} y={PAD.top + innerH + 14} textAnchor="middle" fontSize="9.5" fill="#9ca3af" fontWeight="500">
                                 {formatLabel(d)}
                             </text>
-                            {/* Invisible hover zone */}
                             <rect
                                 x={x - innerW / data.length / 2}
                                 y={PAD.top}
@@ -183,7 +169,6 @@ function LineChart({ data, chartTab }) {
                 })}
             </svg>
 
-            {/* Tooltip */}
             {tooltip && (
                 <div className="line-chart-tooltip" style={{ left: tooltip.x, top: tooltip.y - 80 }}>
                     <div className="lct-date">{formatLabel(tooltip.d)}</div>
@@ -200,42 +185,38 @@ export default function AdminDashboard({ onNavigate }) {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [chartTab, setChartTab] = useState('7ngay');
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedQuarter, setSelectedQuarter] = useState(Math.floor((new Date().getMonth() + 3) / 3));
     const [chartData, setChartData] = useState([]);
     const [chartLoading, setChartLoading] = useState(false);
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                const res = await fetch(`${API_BASE_URL}/admin/dashboard`, { headers: { Authorization: `Bearer ${token}` } });
-                const data = await res.json();
-                if (data.success) setStats(data.data);
-            } catch (e) { console.error(e); }
-            setLoading(false);
-        };
-        fetchStats();
-    }, []);
-
-    const fetchChartData = useCallback(async (tab) => {
+    const fetchAllData = useCallback(async (tab, year, quarter) => {
         setChartLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_BASE_URL}/admin/dashboard/doanh-thu?kieu=${tab}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (data.success) setChartData(data.data);
+            const [statsRes, chartRes] = await Promise.all([
+                adminService.getDashboardStats(tab, token, year, quarter),
+                adminService.getRevenueChartData(tab, token, year, quarter)
+            ]);
+            if (statsRes.success) setStats(statsRes.data);
+            if (chartRes.success) setChartData(chartRes.data);
         } catch (e) { console.error(e); }
         setChartLoading(false);
+        setLoading(false);
     }, []);
 
-    useEffect(() => { fetchChartData(chartTab); }, [chartTab, fetchChartData]);
+    useEffect(() => { 
+        fetchAllData(chartTab, selectedYear, selectedQuarter); 
+    }, [chartTab, selectedYear, selectedQuarter, fetchAllData]);
 
     const chartTitle = {
         '7ngay': '📈 Doanh thu & Đơn hàng — 7 ngày gần nhất',
-        '4tuan': '📈 Doanh thu & Đơn hàng — 4 tuần gần nhất',
-        '12thang': '📈 Doanh thu & Đơn hàng — 12 tháng gần nhất',
+        'quy': `📈 Doanh thu & Đơn hàng — Quý ${selectedQuarter}/${selectedYear}`,
+        'nam': `📈 Doanh thu & Đơn hàng — Năm ${selectedYear}`,
     }[chartTab];
+
+    const yearOptions = [];
+    for (let y = new Date().getFullYear(); y >= 2023; y--) yearOptions.push(y);
 
     if (loading) return <div className="admin-loading">⏳ Đang tải dữ liệu dashboard...</div>;
     if (!stats) return <div className="admin-empty">Không thể tải dữ liệu</div>;
@@ -245,8 +226,8 @@ export default function AdminDashboard({ onNavigate }) {
             <h2 className="admin-section-title" style={{ marginBottom: '24px' }}>📊 Tổng quan</h2>
 
             {/* Stat Cards */}
-            <div className="stat-grid">
-                {STAT_CARDS.map(card => (
+            <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                {STAT_CARDS_CONFIG.map(card => (
                     <div key={card.key} className="stat-card" style={{ background: card.gradient }}>
                         <div className="stat-icon">{card.icon}</div>
                         <div className="stat-info">
@@ -260,19 +241,50 @@ export default function AdminDashboard({ onNavigate }) {
             <div className="dashboard-bottom">
                 {/* Line Chart */}
                 <div className="chart-card">
-                    <div className="chart-header">
-                        <h3 className="chart-title" style={{ margin: 0 }}>{chartTitle}</h3>
-                        <div className="chart-tab-group">
-                            {CHART_TABS.map(tab => (
-                                <button
-                                    key={tab.key}
-                                    className={`chart-tab-btn ${chartTab === tab.key ? 'active' : ''}`}
-                                    onClick={() => setChartTab(tab.key)}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
+                    <div className="chart-header" style={{flexDirection: 'column', alignItems: 'flex-start', gap: '15px'}}>
+                        <div style={{display:'flex', width: '100%', justifyContent:'space-between', alignItems:'center', flexWrap: 'wrap', gap: '10px'}}>
+                            <h3 className="chart-title" style={{ margin: 0 }}>{chartTitle}</h3>
+                            <div className="chart-tab-group">
+                                {CHART_TABS.map(tab => (
+                                    <button
+                                        key={tab.key}
+                                        className={`chart-tab-btn ${chartTab === tab.key ? 'active' : ''}`}
+                                        onClick={() => setChartTab(tab.key)}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
+
+                        {(chartTab === 'quy' || chartTab === 'nam') && (
+                            <div style={{display:'flex', gap: '12px', alignItems: 'center', background: '#f8fafc', padding: '8px 16px', borderRadius: '12px', border: '1px solid #e2e8f0'}}>
+                                <div style={{fontSize: '13px', fontWeight: '600', color: '#64748b'}}>Bộ lọc chi tiết:</div>
+                                
+                                {chartTab === 'quy' && (
+                                    <select 
+                                        className="admin-select" 
+                                        style={{padding: '5px 10px', minWidth: '100px'}}
+                                        value={selectedQuarter} 
+                                        onChange={e => setSelectedQuarter(parseInt(e.target.value))}
+                                    >
+                                        <option value="1">Quý 1</option>
+                                        <option value="2">Quý 2</option>
+                                        <option value="3">Quý 3</option>
+                                        <option value="4">Quý 4</option>
+                                    </select>
+                                )}
+
+                                <select 
+                                    className="admin-select" 
+                                    style={{padding: '5px 10px', minWidth: '100px'}}
+                                    value={selectedYear} 
+                                    onChange={e => setSelectedYear(parseInt(e.target.value))}
+                                >
+                                    {yearOptions.map(y => <option key={y} value={y}>Năm {y}</option>)}
+                                </select>
+                            </div>
+                        )}
                     </div>
 
                     {chartLoading ? (
@@ -299,33 +311,39 @@ export default function AdminDashboard({ onNavigate }) {
                 </div>
             </div>
 
-            {/* Đơn hàng gần nhất */}
-            <div className="recent-orders-card">
+            {/* Top 3 khách hàng */}
+            <div className="recent-orders-card" style={{marginTop: '24px'}}>
                 <div className="recent-header">
-                    <h3 className="chart-title" style={{ margin: 0 }}>🛒 Đơn hàng gần nhất</h3>
+                    <h3 className="chart-title" style={{ margin: 0 }}>👑 Top 3 khách hàng mua nhiều nhất</h3>
                 </div>
                 <div className="admin-table-wrap">
                     <table className="admin-table">
                         <thead>
-                            <tr><th>Mã ĐH</th><th>Khách hàng</th><th>Ngày đặt</th><th>Tổng tiền</th><th>Trạng thái</th></tr>
+                            <tr>
+                                <th>Thứ hạng</th>
+                                <th>Khách hàng</th>
+                                <th>Email</th>
+                                <th>Số đơn hàng</th>
+                                <th>Tổng chi tiêu</th>
+                            </tr>
                         </thead>
                         <tbody>
-                            {stats.donHangGanNhat?.map(o => (
-                                <tr key={o.ma_don_hang}>
-                                    <td><strong>#{o.ma_don_hang}</strong></td>
-                                    <td>{o.ho_ten_nguoi_nhan || 'Khách vãng lai'}</td>
-                                    <td>{new Date(o.ngay_dat).toLocaleDateString('vi-VN')}</td>
-                                    <td><strong className="text-money">{formatMoney(o.tong_tien)}</strong></td>
+                            {stats.topKhachHang?.map((u, i) => (
+                                <tr key={i}>
                                     <td>
-                                        <span className="status-badge" style={{ color: STATUS_MAP[o.trang_thai]?.color, background: STATUS_MAP[o.trang_thai]?.bg }}>
-                                            {STATUS_MAP[o.trang_thai]?.label}
+                                        <span className={`rank-badge rank-${i+1}`}>
+                                            {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
                                         </span>
                                     </td>
+                                    <td><strong>{u.ho_ten}</strong></td>
+                                    <td>{u.email}</td>
+                                    <td>{u.so_don} đơn</td>
+                                    <td><strong className="text-money">{formatMoney(u.tong_chi)}</strong></td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                    {(!stats.donHangGanNhat || stats.donHangGanNhat.length === 0) && <div className="admin-empty">Chưa có đơn hàng</div>}
+                    {(!stats.topKhachHang || stats.topKhachHang.length === 0) && <div className="admin-empty">Chưa có dữ liệu khách hàng</div>}
                 </div>
             </div>
         </div>

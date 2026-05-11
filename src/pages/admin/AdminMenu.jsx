@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_BASE_URL } from '../../apiConfig';
+import adminMenuService from '../../services/adminMenuService';
+import inventoryService from '../../services/inventoryService';
 import ConfirmDialog from './ConfirmDialog';
 
 const formatMoney = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
@@ -24,17 +25,17 @@ export default function AdminMenu() {
 
     const fetchData = useCallback(async () => {
         setLoading(true);
-        const token = localStorage.getItem('token');
-        const headers = { Authorization: `Bearer ${token}` };
-        const [r1, r2, r3] = await Promise.all([
-            fetch(`${API_BASE_URL}/admin/mon-an`, { headers }),
-            fetch(`${API_BASE_URL}/admin/danh-muc`, { headers }),
-            fetch(`${API_BASE_URL}/admin/nguyen-lieu`, { headers })
-        ]);
-        const [d1, d2, d3] = await Promise.all([r1.json(), r2.json(), r3.json()]);
-        if (d1.success) setItems(d1.data);
-        if (d2.success) setCategories(d2.data);
-        if (d3.success) setNguyenLieu(d3.data.filter(n => n.trang_thai === 'hoat_dong'));
+        try {
+            const token = localStorage.getItem('token');
+            const [d1, d2, d3] = await Promise.all([
+                adminMenuService.getMenuItems(token),
+                adminMenuService.getCategories(token),
+                inventoryService.getMaterials(token)
+            ]);
+            if (d1.success) setItems(d1.data);
+            if (d2.success) setCategories(d2.data);
+            if (d3.success) setNguyenLieu(d3.data.filter(n => n.trang_thai === 'hoat_dong'));
+        } catch (e) { console.error(e); }
         setLoading(false);
     }, []);
 
@@ -60,13 +61,15 @@ export default function AdminMenu() {
         const submitForm = { ...form, cong_thuc: validCongThuc };
 
         setSaving(true);
-        const token = localStorage.getItem('token');
-        const method = editItem ? 'PUT' : 'POST';
-        const url = editItem ? `${API_BASE_URL}/admin/mon-an/${editItem.ma_mon_an}` : `${API_BASE_URL}/admin/mon-an`;
-        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(submitForm) });
-        const data = await res.json();
-        if (data.success) { showToast(data.message); setShowModal(false); fetchData(); }
-        else showToast(data.message || 'Lỗi!', 'error');
+        try {
+            const token = localStorage.getItem('token');
+            const data = editItem
+                ? await adminMenuService.updateMenuItem(editItem.ma_mon_an, submitForm, token)
+                : await adminMenuService.createMenuItem(submitForm, token);
+                
+            if (data.success) { showToast(data.message); setShowModal(false); fetchData(); }
+            else showToast(data.message || 'Lỗi!', 'error');
+        } catch (e) { console.error(e); }
         setSaving(false);
     };
 
@@ -97,11 +100,12 @@ export default function AdminMenu() {
     const handleConfirmDelete = async () => {
         const { id } = confirmDialog;
         setConfirmDialog({ open: false, id: null, name: '' });
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/mon-an/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        if (data.success) { showToast(data.message); fetchData(); }
-        else showToast(data.message, 'error');
+        try {
+            const token = localStorage.getItem('token');
+            const data = await adminMenuService.deleteMenuItem(id, token);
+            if (data.success) { showToast(data.message); fetchData(); }
+            else showToast(data.message, 'error');
+        } catch (e) { console.error(e); }
     };
 
     const filtered = items.filter(i =>
