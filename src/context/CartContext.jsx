@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { API_BASE_URL } from '../apiConfig';
+import cartService from '../services/cartService';
 
 const CartContext = createContext();
 
@@ -26,10 +26,7 @@ export const CartProvider = ({ children }) => {
       if (!token) return;
 
       try {
-        const res = await fetch(`${API_BASE_URL}/gio-hang`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
+        const data = await cartService.getCart(token);
         if (data.success) {
           // Map DB response to expected FE format
           const formattedCart = data.data.map(item => ({
@@ -65,15 +62,7 @@ export const CartProvider = ({ children }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/gio-hang/them`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ ma_mon_an: product.id, so_luong: quantity })
-      });
-      const data = await res.json();
+      const data = await cartService.addToCart(product.id, quantity, token);
       if (data.success) {
         setCartItems(prevItems => {
           const existingItem = prevItems.find(item => item.id === product.id);
@@ -100,11 +89,7 @@ export const CartProvider = ({ children }) => {
     
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/gio-hang/xoa/${productId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await cartService.removeFromCart(productId, token);
       if (data.success) {
         setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
       }
@@ -132,15 +117,7 @@ export const CartProvider = ({ children }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/gio-hang/cap-nhat`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ ma_mon_an: productId, so_luong: newQuantity })
-      });
-      const data = await res.json();
+      const data = await cartService.updateQuantity(productId, newQuantity, token);
       if (data.success) {
         setCartItems(prevItems => 
           prevItems.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item)

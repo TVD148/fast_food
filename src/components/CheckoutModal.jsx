@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useCart } from '../contexts/CartContext';
-import { API_BASE_URL } from '../apiConfig';
+import { useCart } from '../context/CartContext';
 import qrBankImg from '../assets/qr_bank.png';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import MapPickerModal from './MapPickerModal';
+import orderService from '../services/orderService';
 
 const CheckoutModal = ({ isOpen, onClose }) => {
   const { cartItems, getCartTotal, closeCart, clearCart } = useCart();
@@ -39,10 +39,7 @@ const CheckoutModal = ({ isOpen, onClose }) => {
       const fetchAddresses = async () => {
         try {
           const token = localStorage.getItem('token');
-          const res = await fetch(`${API_BASE_URL}/dia-chi`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const data = await res.json();
+          const data = await orderService.getSavedAddresses(token);
           if (data.success && data.data.length > 0) {
             setSavedAddresses(data.data);
             const defaultAddr = data.data.find(a => a.la_mac_dinh) || data.data[0];
@@ -74,12 +71,7 @@ const CheckoutModal = ({ isOpen, onClose }) => {
     if (!voucherCode.trim()) return;
     setVoucherMessage({ text: 'Đang kiểm tra...', type: 'info' });
     try {
-      const res = await fetch(`${API_BASE_URL}/don-hang/kiem-tra-ma`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ma_giam_gia: voucherCode, tong_tien: getCartTotal() })
-      });
-      const data = await res.json();
+      const data = await orderService.verifyVoucher(voucherCode, getCartTotal());
       if (data.success) {
         setDiscountData(data.data);
         setVoucherMessage({ text: data.message, type: 'success' });
@@ -128,18 +120,8 @@ const CheckoutModal = ({ isOpen, onClose }) => {
         san_pham: cartItems.map(item => ({ ma_mon_an: item.id, so_luong: item.quantity }))
       };
       
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const res = await fetch(`${API_BASE_URL}/don-hang/tao-don`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload)
-      });
+      const data = await orderService.createOrder(payload, token);
       
-      const data = await res.json();
       if (data.success) {
         handleOrderSuccess();
       } else {

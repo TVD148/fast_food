@@ -1,7 +1,7 @@
 import React from 'react';
-import { useCart } from '../contexts/CartContext';
-import { useSearch } from '../contexts/SearchContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../context/CartContext';
+import { useSearch } from '../context/SearchContext';
+import { useAuth } from '../context/AuthContext';
 
 const Header = ({ onLoginClick, onNavigate }) => {
   const { getCartCount, toggleCart } = useCart();

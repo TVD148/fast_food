@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_BASE_URL } from '../../apiConfig';
+import inventoryService from '../../services/inventoryService';
 import ConfirmDialog from './ConfirmDialog';
 
 const formatMoney = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
@@ -22,6 +22,7 @@ export default function AdminInventory() {
     const [phieuXuat, setPhieuXuat] = useState([{ ma_nguyen_lieu: '', so_luong: '' }]);
     const [ghiChu, setGhiChu] = useState('');
     const [saving, setSaving] = useState(false);
+    const [search, setSearch] = useState('');
 
     const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null, name: '' });
 
@@ -29,25 +30,25 @@ export default function AdminInventory() {
 
     const fetchNguyenLieu = useCallback(async () => {
         setLoading(true);
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/nguyen-lieu`, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        if (data.success) setNguyenLieu(data.data);
+        try {
+            const token = localStorage.getItem('token');
+            const data = await inventoryService.getMaterials(token);
+            if (data.success) setNguyenLieu(data.data);
+        } catch (e) { console.error(e); }
         setLoading(false);
     }, []);
 
     const fetchLichSu = useCallback(async () => {
         setLoading(true);
-        const token = localStorage.getItem('token');
-        // Fetch cả nhập và xuất
-        const [resN, resX] = await Promise.all([
-            fetch(`${API_BASE_URL}/admin/lich-su-nhap-kho`, { headers: { Authorization: `Bearer ${token}` } }),
-            fetch(`${API_BASE_URL}/admin/lich-su-xuat-kho`, { headers: { Authorization: `Bearer ${token}` } })
-        ]);
-        const dataN = await resN.json();
-        const dataX = await resX.json();
-        if (dataN.success) setLichSu(dataN.data);
-        if (dataX.success) setLichSuXuat(dataX.data);
+        try {
+            const token = localStorage.getItem('token');
+            const [dataN, dataX] = await Promise.all([
+                inventoryService.getImportHistory(token),
+                inventoryService.getExportHistory(token)
+            ]);
+            if (dataN.success) setLichSu(dataN.data);
+            if (dataX.success) setLichSuXuat(dataX.data);
+        } catch (e) { console.error(e); }
         setLoading(false);
     }, []);
 
@@ -63,24 +64,27 @@ export default function AdminInventory() {
     const handleSaveNL = async () => {
         if (!formNL.ten_nguyen_lieu || !formNL.don_vi_tinh) return showToast('Vui lòng nhập tên và đơn vị tính', 'error');
         setSaving(true);
-        const token = localStorage.getItem('token');
-        const method = editItem ? 'PUT' : 'POST';
-        const url = editItem ? `${API_BASE_URL}/admin/nguyen-lieu/${editItem.ma_nguyen_lieu}` : `${API_BASE_URL}/admin/nguyen-lieu`;
-        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(formNL) });
-        const data = await res.json();
-        if (data.success) { showToast(data.message); setShowModal(false); fetchNguyenLieu(); }
-        else showToast(data.message, 'error');
+        try {
+            const token = localStorage.getItem('token');
+            const data = editItem 
+                ? await inventoryService.updateMaterial(editItem.ma_nguyen_lieu, formNL, token)
+                : await inventoryService.addMaterial(formNL, token);
+                
+            if (data.success) { showToast(data.message); setShowModal(false); fetchNguyenLieu(); }
+            else showToast(data.message, 'error');
+        } catch (e) { console.error(e); }
         setSaving(false);
     };
 
     const handleDeleteNL = async () => {
         const { id } = confirmDialog;
         setConfirmDialog({ open: false, id: null, name: '' });
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/nguyen-lieu/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        if (data.success) { showToast(data.message); fetchNguyenLieu(); }
-        else showToast(data.message, 'error');
+        try {
+            const token = localStorage.getItem('token');
+            const data = await inventoryService.deleteMaterial(id, token);
+            if (data.success) { showToast(data.message); fetchNguyenLieu(); }
+            else showToast(data.message, 'error');
+        } catch (e) { console.error(e); }
     };
 
     // ===== NHẬP KHO =====
@@ -97,21 +101,18 @@ export default function AdminInventory() {
         if (chiTiet.length === 0) return showToast('Vui lòng nhập ít nhất 1 dòng hợp lệ', 'error');
         
         setSaving(true);
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/nhap-kho`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ chi_tiet: chiTiet, ghi_chu: ghiChu, nguoi_nhap: 'Admin' })
-        });
-        const data = await res.json();
-        if (data.success) {
-            showToast(data.message);
-            setPhieuNhap([{ ma_nguyen_lieu: '', so_luong: '', don_gia: '' }]);
-            setGhiChu('');
-            setActiveTab('danh-sach');
-        } else {
-            showToast(data.message, 'error');
-        }
+        try {
+            const token = localStorage.getItem('token');
+            const data = await inventoryService.importStock({ chi_tiet: chiTiet, ghi_chu: ghiChu, nguoi_nhap: 'Admin' }, token);
+            if (data.success) {
+                showToast(data.message);
+                setPhieuNhap([{ ma_nguyen_lieu: '', so_luong: '', don_gia: '' }]);
+                setGhiChu('');
+                setActiveTab('danh-sach');
+            } else {
+                showToast(data.message, 'error');
+            }
+        } catch (e) { console.error(e); }
         setSaving(false);
     };
 
@@ -129,23 +130,25 @@ export default function AdminInventory() {
         if (chiTiet.length === 0) return showToast('Vui lòng nhập ít nhất 1 dòng hợp lệ', 'error');
         
         setSaving(true);
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/xuat-kho`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ chi_tiet: chiTiet, ghi_chu: ghiChu, nguoi_xuat: 'Admin' })
-        });
-        const data = await res.json();
-        if (data.success) {
-            showToast(data.message);
-            setPhieuXuat([{ ma_nguyen_lieu: '', so_luong: '' }]);
-            setGhiChu('');
-            setActiveTab('danh-sach');
-        } else {
-            showToast(data.message, 'error');
-        }
+        try {
+            const token = localStorage.getItem('token');
+            const data = await inventoryService.exportStock({ chi_tiet: chiTiet, ghi_chu: ghiChu, nguoi_xuat: 'Admin' }, token);
+            if (data.success) {
+                showToast(data.message);
+                setPhieuXuat([{ ma_nguyen_lieu: '', so_luong: '' }]);
+                setGhiChu('');
+                setActiveTab('danh-sach');
+            } else {
+                showToast(data.message, 'error');
+            }
+        } catch (e) { console.error(e); }
         setSaving(false);
     };
+
+    const filteredNL = nguyenLieu.filter(nl => 
+        nl.ten_nguyen_lieu.toLowerCase().includes(search.toLowerCase()) ||
+        String(nl.ma_nguyen_lieu).includes(search)
+    );
 
     return (
         <div className="admin-section">
@@ -172,7 +175,8 @@ export default function AdminInventory() {
                     {/* TAB DANH SÁCH */}
                     {activeTab === 'danh-sach' && (
                         <>
-                            <div style={{display:'flex', justifyContent:'flex-end', marginBottom: '15px'}}>
+                            <div className="admin-toolbar" style={{justifyContent: 'space-between'}}>
+                                <input className="admin-search" placeholder="🔍 Tìm tên nguyên liệu..." value={search} onChange={e => setSearch(e.target.value)} />
                                 <button className="btn-admin-primary" onClick={openAddNL}>+ Thêm Nguyên Liệu</button>
                             </div>
                             <table className="admin-table">
@@ -188,7 +192,7 @@ export default function AdminInventory() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {nguyenLieu.map(nl => (
+                                    {filteredNL.map(nl => (
                                         <tr key={nl.ma_nguyen_lieu}>
                                             <td>#{nl.ma_nguyen_lieu}</td>
                                             <td><strong>{nl.ten_nguyen_lieu}</strong></td>

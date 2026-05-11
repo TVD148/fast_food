@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../apiConfig';
-import { useCart } from '../contexts/CartContext';
+import { API_BASE_URL } from '../api/apiConfig';
+import { useCart } from '../context/CartContext';
 
 const BestSellingSection = () => {
   const { addToCart } = useCart();

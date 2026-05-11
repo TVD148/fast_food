@@ -8,9 +8,9 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import App from './App.jsx';
 import './index.css'; // File CSS tự viết của mình để ở dưới cùng
 
-import { CartProvider } from './contexts/CartContext';
-import { SearchProvider } from './contexts/SearchContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { CartProvider } from './context/CartContext';
+import { SearchProvider } from './context/SearchContext';
+import { AuthProvider } from './context/AuthContext';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

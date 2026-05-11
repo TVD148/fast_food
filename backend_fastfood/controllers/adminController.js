@@ -3,45 +3,77 @@ const db = require('../config/db');
 // ========== DASHBOARD ==========
 const getDashboardStats = async (req, res) => {
     try {
-        const [[{ tongDonHom }]] = await db.query(`SELECT COUNT(*) AS tongDonHom FROM DON_HANG WHERE DATE(ngay_dat) = CURDATE()`);
-        const [[{ doanhThu }]] = await db.query(`SELECT COALESCE(SUM(tong_tien),0) AS doanhThu FROM DON_HANG WHERE trang_thai='hoan_thanh'`);
-        const [[{ choDuyet }]] = await db.query(`SELECT COUNT(*) AS choDuyet FROM DON_HANG WHERE trang_thai='cho_duyet'`);
-        const [[{ tongMonAn }]] = await db.query(`SELECT COUNT(*) AS tongMonAn FROM MON_AN`);
-        const [[{ tongKhachHang }]] = await db.query(`SELECT COUNT(*) AS tongKhachHang FROM NGUOI_DUNG WHERE vai_tro='khach_hang'`);
-        const [[{ tongDonHang }]] = await db.query(`SELECT COUNT(*) AS tongDonHang FROM DON_HANG`);
+        const { kieu = 'tat_ca', nam, quy } = req.query;
+        let whereClause = "WHERE 1=1";
+        let params = [];
 
-        // Doanh thu 7 ngày gần nhất
-        const [doanhThu7Ngay] = await db.query(`
-            SELECT DATE(ngay_dat) AS ngay, COALESCE(SUM(tong_tien),0) AS doanh_thu
-            FROM DON_HANG WHERE ngay_dat >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-            GROUP BY DATE(ngay_dat) ORDER BY ngay ASC
-        `);
+        const currentYear = new Date().getFullYear();
+        const targetYear = nam ? parseInt(nam) : currentYear;
 
-        // Đơn hàng gần nhất
-        const [donHangGanNhat] = await db.query(`
-            SELECT dh.ma_don_hang, dh.ho_ten_nguoi_nhan, dh.tong_tien, dh.trang_thai, dh.ngay_dat, dh.phuong_thuc_thanh_toan
-            FROM DON_HANG dh ORDER BY dh.ngay_dat DESC LIMIT 8
-        `);
+        if (kieu === '7ngay') {
+            whereClause = "WHERE ngay_dat >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)";
+        } else if (kieu === 'quy') {
+            const targetQuarter = quy ? parseInt(quy) : Math.floor((new Date().getMonth() + 3) / 3);
+            whereClause = "WHERE QUARTER(ngay_dat) = ? AND YEAR(ngay_dat) = ?";
+            params.push(targetQuarter, targetYear);
+        } else if (kieu === 'nam') {
+            whereClause = "WHERE YEAR(ngay_dat) = ?";
+            params.push(targetYear);
+        }
 
-        // Top món bán chạy
+        const [[{ doanhThu }]] = await db.query(`SELECT COALESCE(SUM(tong_tien),0) AS doanhThu FROM DON_HANG ${whereClause} AND trang_thai='hoan_thanh'`, params);
+        const [[{ donHoanThanh }]] = await db.query(`SELECT COUNT(*) AS donHoanThanh FROM DON_HANG ${whereClause} AND trang_thai='hoan_thanh'`, params);
+        const [[{ donDaHuy }]] = await db.query(`SELECT COUNT(*) AS donDaHuy FROM DON_HANG ${whereClause} AND trang_thai='da_huy'`, params);
+        const [[{ tongKhachHang }]] = await db.query(`SELECT COUNT(DISTINCT ma_nguoi_dung) AS tongKhachHang FROM DON_HANG ${whereClause}`, params);
+        const [[{ tongDonHang }]] = await db.query(`SELECT COUNT(*) AS tongDonHang FROM DON_HANG ${whereClause}`, params);
+
+        // Top món bán chạy trong kỳ
         const [topMon] = await db.query(`
             SELECT m.ten_mon, m.hinh_anh, SUM(ct.so_luong) AS tong_ban
-            FROM CHI_TIET_DON_HANG ct JOIN MON_AN m ON ct.ma_mon_an = m.ma_mon_an
+            FROM CHI_TIET_DON_HANG ct 
+            JOIN MON_AN m ON ct.ma_mon_an = m.ma_mon_an
+            JOIN DON_HANG dh ON ct.ma_don_hang = dh.ma_don_hang
+            ${whereClause}
             GROUP BY ct.ma_mon_an ORDER BY tong_ban DESC LIMIT 5
-        `);
+        `, params);
 
-        res.json({ success: true, data: { tongDonHom, doanhThu, choDuyet, tongMonAn, tongKhachHang, tongDonHang, doanhThu7Ngay, donHangGanNhat, topMon } });
+        // Top 3 khách hàng mua nhiều nhất
+        const [topKhachHang] = await db.query(`
+            SELECT nd.ho_ten, nd.email, SUM(dh.tong_tien) AS tong_chi, COUNT(dh.ma_don_hang) AS so_don
+            FROM DON_HANG dh
+            JOIN NGUOI_DUNG nd ON dh.ma_nguoi_dung = nd.ma_nguoi_dung
+            ${whereClause} AND dh.trang_thai = 'hoan_thanh'
+            GROUP BY dh.ma_nguoi_dung
+            ORDER BY tong_chi DESC
+            LIMIT 3
+        `, params);
+
+        res.json({ 
+            success: true, 
+            data: { 
+                doanhThu, 
+                donHoanThanh, 
+                donDaHuy, 
+                tongKhachHang, 
+                tongDonHang, 
+                topMon,
+                topKhachHang
+            } 
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Lỗi server' });
     }
 };
 
-// ========== DOANH THU THEO KỲ (cho biểu đồ đường) ==========
 const getDoanhThuChart = async (req, res) => {
     try {
-        const { kieu = '7ngay' } = req.query;
+        const { kieu = '7ngay', nam, quy } = req.query;
         let query = '';
+        let params = [];
+
+        const currentYear = new Date().getFullYear();
+        const targetYear = nam ? parseInt(nam) : currentYear;
 
         if (kieu === '7ngay') {
             query = `
@@ -53,33 +85,36 @@ const getDoanhThuChart = async (req, res) => {
                 WHERE ngay_dat >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
                 GROUP BY DATE(ngay_dat) ORDER BY ngay ASC
             `;
-        } else if (kieu === '4tuan') {
+        } else if (kieu === 'quy') {
+            const targetQuarter = quy ? parseInt(quy) : Math.floor((new Date().getMonth() + 3) / 3);
             query = `
                 SELECT
                     DATE(ngay_dat - INTERVAL WEEKDAY(ngay_dat) DAY) AS ngay,
                     COALESCE(SUM(tong_tien),0) AS doanh_thu,
                     COUNT(*) AS so_don
                 FROM DON_HANG
-                WHERE ngay_dat >= DATE_SUB(CURDATE(), INTERVAL 27 DAY)
+                WHERE QUARTER(ngay_dat) = ? AND YEAR(ngay_dat) = ?
                 GROUP BY DATE(ngay_dat - INTERVAL WEEKDAY(ngay_dat) DAY)
                 ORDER BY ngay ASC
             `;
-        } else if (kieu === '12thang') {
+            params.push(targetQuarter, targetYear);
+        } else if (kieu === 'nam') {
             query = `
                 SELECT
                     DATE_FORMAT(ngay_dat, '%Y-%m-01') AS ngay,
                     COALESCE(SUM(tong_tien),0) AS doanh_thu,
                     COUNT(*) AS so_don
                 FROM DON_HANG
-                WHERE ngay_dat >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
+                WHERE YEAR(ngay_dat) = ?
                 GROUP BY DATE_FORMAT(ngay_dat, '%Y-%m-01')
                 ORDER BY ngay ASC
             `;
+            params.push(targetYear);
         } else {
             return res.status(400).json({ success: false, message: 'Kiểu không hợp lệ' });
         }
 
-        const [data] = await db.query(query);
+        const [data] = await db.query(query, params);
         res.json({ success: true, data });
     } catch (error) {
         console.error(error);
@@ -90,7 +125,7 @@ const getDoanhThuChart = async (req, res) => {
 // ========== QUẢN LÝ ĐƠN HÀNG ==========
 const getAllDonHang = async (req, res) => {
     try {
-        const { trang_thai, tu_ngay, den_ngay, page = 1, limit = 15 } = req.query;
+        const { trang_thai, tu_ngay, den_ngay, search, page = 1, limit = 15 } = req.query;
         const offset = (page - 1) * limit;
         let where = [];
         let params = [];
@@ -98,6 +133,11 @@ const getAllDonHang = async (req, res) => {
         if (trang_thai) { where.push('dh.trang_thai = ?'); params.push(trang_thai); }
         if (tu_ngay) { where.push('DATE(dh.ngay_dat) >= ?'); params.push(tu_ngay); }
         if (den_ngay) { where.push('DATE(dh.ngay_dat) <= ?'); params.push(den_ngay); }
+        if (search) {
+            where.push('(dh.ma_don_hang LIKE ? OR dh.ho_ten_nguoi_nhan LIKE ? OR dh.so_dien_thoai_giao LIKE ?)');
+            const s = `%${search}%`;
+            params.push(s, s, s);
+        }
 
         const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 

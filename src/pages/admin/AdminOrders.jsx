@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_BASE_URL } from '../../apiConfig';
+import adminService from '../../services/adminService';
 
 const STATUS_MAP = {
     cho_duyet: { label: 'Chờ duyệt', color: '#f59e0b', bg: '#fef3c7' },
@@ -17,6 +17,7 @@ export default function AdminOrders() {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [filterStatus, setFilterStatus] = useState('');
+    const [search, setSearch] = useState('');
     const [expandedOrder, setExpandedOrder] = useState(null);
     const [updatingId, setUpdatingId] = useState(null);
     const [toast, setToast] = useState(null);
@@ -30,32 +31,28 @@ export default function AdminOrders() {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const params = new URLSearchParams({ page, limit: 12 });
-            if (filterStatus) params.append('trang_thai', filterStatus);
-            const res = await fetch(`${API_BASE_URL}/admin/don-hang?${params}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
+            const params = { page, limit: 12 };
+            if (filterStatus) params.trang_thai = filterStatus;
+            if (search) params.search = search;
+            const data = await adminService.getOrders(params, token);
             if (data.success) {
                 setOrders(data.data);
                 setTotalPages(data.totalPages);
             }
         } catch (e) { console.error(e); }
         setLoading(false);
-    }, [page, filterStatus]);
+    }, [page, filterStatus, search]);
 
-    useEffect(() => { fetchOrders(); }, [fetchOrders]);
+    useEffect(() => { 
+        const delay = setTimeout(() => fetchOrders(), 300);
+        return () => clearTimeout(delay);
+    }, [fetchOrders]);
 
     const updateStatus = async (id, trang_thai) => {
         setUpdatingId(id);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_BASE_URL}/admin/don-hang/${id}/trang-thai`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ trang_thai })
-            });
-            const data = await res.json();
+            const data = await adminService.updateOrderStatus(id, trang_thai, token);
             if (data.success) { showToast('Cập nhật trạng thái thành công!'); fetchOrders(); }
             else showToast(data.message || 'Lỗi!', 'error');
         } catch (e) { showToast('Lỗi kết nối server', 'error'); }
@@ -67,13 +64,22 @@ export default function AdminOrders() {
             {toast && <div className={`admin-toast ${toast.type}`}>{toast.msg}</div>}
             <div className="admin-section-header">
                 <h2 className="admin-section-title">🛒 Quản lý Đơn hàng</h2>
-                <div className="admin-filter-row">
-                    {['', 'cho_duyet', 'dang_giao', 'hoan_thanh', 'da_huy'].map(s => (
-                        <button key={s} className={`admin-filter-btn ${filterStatus === s ? 'active' : ''}`}
-                            onClick={() => { setFilterStatus(s); setPage(1); }}>
-                            {s ? STATUS_MAP[s].label : 'Tất cả'}
-                        </button>
-                    ))}
+                <div className="admin-toolbar" style={{marginTop: '10px'}}>
+                    <input 
+                        className="admin-search" 
+                        placeholder="🔍 Tìm mã ĐH, tên khách, SĐT..." 
+                        value={search} 
+                        onChange={e => { setSearch(e.target.value); setPage(1); }} 
+                        style={{minWidth: '300px'}}
+                    />
+                    <div className="admin-filter-row">
+                        {['', 'cho_duyet', 'dang_giao', 'hoan_thanh', 'da_huy'].map(s => (
+                            <button key={s} className={`admin-filter-btn ${filterStatus === s ? 'active' : ''}`}
+                                onClick={() => { setFilterStatus(s); setPage(1); }}>
+                                {s ? STATUS_MAP[s].label : 'Tất cả'}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 

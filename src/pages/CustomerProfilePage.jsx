@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { API_BASE_URL } from '../apiConfig';
-import MapPickerModal from './MapPickerModal';
-import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../context/AuthContext';
+import MapPickerModal from '../components/MapPickerModal';
+import { useCart } from '../context/CartContext';
+import userService from '../services/userService';
+import orderService from '../services/orderService';
 
 const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
   const { currentUser, updateUser } = useAuth();
@@ -109,10 +110,7 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
       const fetchHistory = async () => {
         try {
           const token = localStorage.getItem('token');
-          const res = await fetch(`${API_BASE_URL}/don-hang/lich-su`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const data = await res.json();
+          const data = await orderService.getOrderHistory(token);
           if (data.success) {
             setOrders(data.data);
           }
@@ -128,10 +126,7 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     setAddressLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/dia-chi`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await orderService.getSavedAddresses(token);
       if (data.success) setAddresses(data.data);
     } catch (err) {
       console.error(err);
@@ -144,11 +139,7 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     if (!window.confirm('Bạn có muốn xóa địa chỉ này?')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/dia-chi/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await userService.deleteAddress(id, token);
       if (data.success) {
         fetchAddresses();
         setMessage({ text: 'Đã xóa địa chỉ!', type: 'success' });
@@ -161,11 +152,7 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
   const handleSetDefaultAddress = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/dia-chi/${id}/mac-dinh`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await userService.setDefaultAddress(id, token);
       if (data.success) {
         fetchAddresses();
         setMessage({ text: 'Đã cập nhật địa chỉ mặc định!', type: 'success' });
@@ -182,41 +169,25 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
       
       if (editingAddress) {
         // Cập nhật địa chỉ cũ
-        const res = await fetch(`${API_BASE_URL}/dia-chi/${editingAddress.ma_dia_chi}`, {
-          method: 'PUT',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` 
-          },
-          body: JSON.stringify({ 
-            ten_goi_nho: editingAddress.ten_goi_nho, 
-            dia_chi_chi_tiet: addr,
-            kinh_do: lng,
-            vi_do: lat
-          })
-        });
-        const data = await res.json();
+        const data = await userService.updateAddress(editingAddress.ma_dia_chi, { 
+          ten_goi_nho: editingAddress.ten_goi_nho, 
+          dia_chi_chi_tiet: addr,
+          kinh_do: lng,
+          vi_do: lat
+        }, token);
         if (data.success) {
           fetchAddresses();
           setMessage({ text: 'Đã cập nhật địa chỉ!', type: 'success' });
         }
       } else {
         // Thêm mới
-        const res = await fetch(`${API_BASE_URL}/dia-chi`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` 
-          },
-          body: JSON.stringify({ 
-            ten_goi_nho: 'Địa chỉ mới', 
-            dia_chi_chi_tiet: addr,
-            kinh_do: lng, 
-            vi_do: lat,
-            la_mac_dinh: addresses.length === 0
-          })
-        });
-        const data = await res.json();
+        const data = await userService.addAddress({ 
+          ten_goi_nho: 'Địa chỉ mới', 
+          dia_chi_chi_tiet: addr,
+          kinh_do: lng, 
+          vi_do: lat,
+          la_mac_dinh: addresses.length === 0
+        }, token);
         if (data.success) {
           fetchAddresses();
           setMessage({ text: 'Đã thêm địa chỉ mới!', type: 'success' });
@@ -233,16 +204,11 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/don-hang/khach-hang-huy/${id}`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await orderService.cancelOrder(id, token);
       if (data.success) {
         setMessage({ text: data.message, type: 'success' });
         // Refresh orders
-        const historyRes = await fetch(`${API_BASE_URL}/don-hang/lich-su`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const historyData = await historyRes.json();
+        const historyData = await orderService.getOrderHistory(token);
         if (historyData.success) setOrders(historyData.data);
       } else {
         setMessage({ text: data.message, type: 'error' });
@@ -271,32 +237,23 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
 
   // Removed reservations fetch logic
 
-    const handleSaveInfo = async (e) => {
+  const handleSaveInfo = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
       const fullName = `${hoDem} ${ten}`.trim();
-      const res = await fetch(`${API_BASE_URL}/auth/cap-nhat`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ ho_ten: fullName, email, so_dien_thoai: phone, hinh_anh: avatar })
-      });
+      const data = await userService.updateInfo({ 
+        ho_ten: fullName, 
+        email, 
+        so_dien_thoai: phone, 
+        hinh_anh: avatar 
+      }, token);
       
-      const contentType = res.headers.get("content-type");
-      if (contentType && contentType.indexOf("application/json") !== -1) {
-          const data = await res.json();
-          if (data.success) {
-            setMessage({ text: 'Cập nhật thông tin thành công!', type: 'success' });
-            updateUser(data.user);
-          } else {
-            setMessage({ text: data.message || 'Cập nhật thất bại', type: 'error' });
-          }
+      if (data.success) {
+        setMessage({ text: 'Cập nhật thông tin thành công!', type: 'success' });
+        updateUser(data.user);
       } else {
-          const text = await res.text();
-          setMessage({ text: `Lỗi bất ngờ từ máy chủ (Mã: ${res.status}): ${text.substring(0, 50)}`, type: 'error' });
+        setMessage({ text: data.message || 'Cập nhật thất bại', type: 'error' });
       }
     } catch (err) {
       console.error(err);
@@ -308,19 +265,11 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/danh-gia/tao-moi`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ma_mon_an: reviewModal.ma_mon_an,
-          so_sao: reviewModal.so_sao,
-          binh_luan: reviewModal.binh_luan
-        })
-      });
-      const data = await res.json();
+      const data = await orderService.submitReview({
+        ma_mon_an: reviewModal.ma_mon_an,
+        so_sao: reviewModal.so_sao,
+        binh_luan: reviewModal.binh_luan
+      }, token);
       if (data.success) {
         alert('Đánh giá thành công!');
         setReviewModal({ isOpen: false, ma_mon_an: null, ten_mon: '', so_sao: 5, binh_luan: '' });
@@ -339,19 +288,11 @@ const CustomerProfilePage = ({ initialTab = 'info', onNavigateHome }) => {
     }
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/auth/doi-mat-khau`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          mat_khau_hien_tai: currentPassword,
-          mat_khau_moi: newPassword,
-          xac_nhan_mat_khau_moi: confirmPassword
-        })
-      });
-      const data = await res.json();
+      const data = await userService.changePassword({
+        mat_khau_hien_tai: currentPassword,
+        mat_khau_moi: newPassword,
+        xac_nhan_mat_khau_moi: confirmPassword
+      }, token);
       if (data.success) {
         setMessage({ text: 'Đổi mật khẩu thành công!', type: 'success' });
         setCurrentPassword('');

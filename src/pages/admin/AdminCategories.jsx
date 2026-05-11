@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_BASE_URL } from '../../apiConfig';
+import adminMenuService from '../../services/adminMenuService';
 import ConfirmDialog from './ConfirmDialog';
 
 const formatMoney = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
@@ -13,6 +13,7 @@ export default function AdminCategories() {
     const [editCat, setEditCat] = useState(null);
     const [form, setForm] = useState(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
+    const [search, setSearch] = useState('');
     const [toast, setToast] = useState(null);
     const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null, name: '' });
 
@@ -20,10 +21,11 @@ export default function AdminCategories() {
 
     const fetchCategories = useCallback(async () => {
         setLoading(true);
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/danh-muc`, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        if (data.success) setCategories(data.data);
+        try {
+            const token = localStorage.getItem('token');
+            const data = await adminMenuService.getCategories(token);
+            if (data.success) setCategories(data.data);
+        } catch (e) { console.error(e); }
         setLoading(false);
     }, []);
 
@@ -35,13 +37,15 @@ export default function AdminCategories() {
     const handleSave = async () => {
         if (!form.ten_danh_muc) return showToast('Tên danh mục không được để trống!', 'error');
         setSaving(true);
-        const token = localStorage.getItem('token');
-        const method = editCat ? 'PUT' : 'POST';
-        const url = editCat ? `${API_BASE_URL}/admin/danh-muc/${editCat.ma_danh_muc}` : `${API_BASE_URL}/admin/danh-muc`;
-        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(form) });
-        const data = await res.json();
-        if (data.success) { showToast(data.message); setShowModal(false); fetchCategories(); }
-        else showToast(data.message || 'Lỗi!', 'error');
+        try {
+            const token = localStorage.getItem('token');
+            const data = editCat
+                ? await adminMenuService.updateCategory(editCat.ma_danh_muc, form, token)
+                : await adminMenuService.createCategory(form, token);
+                
+            if (data.success) { showToast(data.message); setShowModal(false); fetchCategories(); }
+            else showToast(data.message || 'Lỗi!', 'error');
+        } catch (e) { console.error(e); }
         setSaving(false);
     };
 
@@ -52,12 +56,18 @@ export default function AdminCategories() {
     const handleConfirmDelete = async () => {
         const { id } = confirmDialog;
         setConfirmDialog({ open: false, id: null, name: '' });
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/admin/danh-muc/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        if (data.success) { showToast(data.message); fetchCategories(); }
-        else showToast(data.message, 'error');
+        try {
+            const token = localStorage.getItem('token');
+            const data = await adminMenuService.deleteCategory(id, token);
+            if (data.success) { showToast(data.message); fetchCategories(); }
+            else showToast(data.message, 'error');
+        } catch (e) { console.error(e); }
     };
+
+    const filtered = categories.filter(c => 
+        c.ten_danh_muc.toLowerCase().includes(search.toLowerCase()) ||
+        c.mo_ta?.toLowerCase().includes(search.toLowerCase())
+    );
 
     return (
         <div className="admin-section">
@@ -75,9 +85,14 @@ export default function AdminCategories() {
                 <button className="btn-admin-primary" onClick={openAdd}>+ Thêm danh mục</button>
             </div>
 
+            <div className="admin-toolbar">
+                <input className="admin-search" placeholder="🔍 Tìm tên danh mục..." value={search} onChange={e => setSearch(e.target.value)} />
+                <span className="admin-count">{filtered.length} danh mục</span>
+            </div>
+
             {loading ? <div className="admin-loading">⏳ Đang tải...</div> : (
                 <div className="cat-grid">
-                    {categories.map(cat => (
+                    {filtered.map(cat => (
                         <div key={cat.ma_danh_muc} className="cat-card">
                             <div className="cat-img-wrap">
                                 <img src={cat.hinh_anh || 'https://via.placeholder.com/200x120?text=No+Image'} alt={cat.ten_danh_muc}
@@ -110,9 +125,30 @@ export default function AdminCategories() {
                                 <input value={form.ten_danh_muc} onChange={e => setForm({ ...form, ten_danh_muc: e.target.value })} placeholder="VD: Burger, Gà Rán..." />
                             </div>
                             <div className="form-group">
-                                <label>URL Hình ảnh</label>
-                                <input value={form.hinh_anh} onChange={e => setForm({ ...form, hinh_anh: e.target.value })} placeholder="https://..." />
-                                {form.hinh_anh && <img src={form.hinh_anh} alt="preview" className="img-preview" onError={e => e.target.style.display = 'none'} />}
+                                <label>Hình ảnh (Tối đa 2MB)</label>
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    className="form-control"
+                                    onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            if (file.size > 2 * 1024 * 1024) {
+                                                alert('Hình ảnh quá lớn! Vui lòng chọn ảnh dưới 2MB.');
+                                                e.target.value = '';
+                                                return;
+                                            }
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => {
+                                                setForm({ ...form, hinh_anh: reader.result });
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }
+                                    }}
+                                />
+                                <div className="mt-2 text-muted small">Hoặc nhập URL:</div>
+                                <input value={form.hinh_anh?.startsWith('data:') ? '' : form.hinh_anh} onChange={e => setForm({ ...form, hinh_anh: e.target.value })} placeholder="https://..." />
+                                {form.hinh_anh && <img src={form.hinh_anh} alt="preview" className="img-preview mt-2" style={{maxHeight: '120px', objectFit: 'contain'}} onError={e => e.target.style.display = 'none'} />}
                             </div>
                             <div className="form-group">
                                 <label>Mô tả</label>

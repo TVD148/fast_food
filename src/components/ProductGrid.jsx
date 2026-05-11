@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../apiConfig';
-import { useCart } from '../contexts/CartContext';
-import { useSearch } from '../contexts/SearchContext';
+import { useCart } from '../context/CartContext';
+import { useSearch } from '../context/SearchContext';
 import CategoryList from './CategoryList';
+import productService from '../services/productService';
 
 const ProductGrid = () => {
   const { addToCart } = useCart();
@@ -29,8 +29,7 @@ const ProductGrid = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/mon-an`);
-        const data = await response.json();
+        const data = await productService.getAllProducts();
         if (data.success) {
           const formattedProducts = data.data.map(p => ({
             id: p.ma_mon_an,

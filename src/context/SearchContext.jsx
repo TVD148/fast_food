@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { API_BASE_URL } from '../apiConfig';
+import { API_BASE_URL } from '../api/apiConfig';
 
 const SearchContext = createContext();
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCart } from '../contexts/CartContext';
+import { useCart } from '../context/CartContext';
 
 const CartOffcanvas = ({ onCheckoutClick, onNavigate }) => {
   const { isCartOpen, closeCart, cartItems, removeFromCart, updateQuantity, getCartTotal } = useCart();

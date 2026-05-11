@@ -2,24 +2,24 @@ import React, { useEffect, useState } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
-import Header from './components/Header';
+import Header from './layout/Header';
 import HeroSection from './components/HeroSection';
 import FeaturedSection from './components/FeaturedSection';
 import BestSellingSection from './components/BestSellingSection';
 import FeaturesSection from './components/FeaturesSection';
 import ProductGrid from './components/ProductGrid';
 import InstagramGallery from './components/InstagramGallery';
-import Footer from './components/Footer';
+import Footer from './layout/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
 import AuthModal from './components/AuthModal';
 import CartOffcanvas from './components/CartOffcanvas';
 import CheckoutModal from './components/CheckoutModal';
-import CustomerProfilePage from './components/CustomerProfilePage';
+import CustomerProfilePage from './pages/CustomerProfilePage';
 import ExitIntentPopup from './components/ExitIntentPopup';
-import AdminPage from './components/admin/AdminPage';
-import StaffDashboard from './components/StaffDashboard';
-import AboutPage from './components/AboutPage';
-import { useAuth } from './contexts/AuthContext';
+import AdminPage from './pages/admin/AdminPage';
+import StaffDashboard from './pages/staff/StaffDashboard';
+import AboutPage from './pages/AboutPage';
+import { useAuth } from './context/AuthContext';
 
 function App() {
   // State for UI
